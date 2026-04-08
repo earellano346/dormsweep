@@ -1,0 +1,48 @@
+import type { Listing } from "@/lib/storage";
+
+export const seedListings: Listing[] = [
+  {
+    id: "seed-1",
+    title: "Mini Fridge",
+    price: 70,
+    category: "Appliances",
+    condition: "Good",
+    location: "Campus pickup",
+    description: "Clean, works great.",
+    createdAt: Date.now(),
+    sellerEmail: "alex@school.edu",
+  },
+  {
+    id: "seed-2",
+    title: "Desk Lamp",
+    price: 10,
+    category: "Lighting",
+    condition: "Like New",
+    location: "Meet at library",
+    description: "Bright and adjustable.",
+    createdAt: Date.now(),
+    sellerEmail: "maya@school.edu",
+  },
+  {
+    id: "seed-3",
+    title: "Twin XL Mattress Topper",
+    price: 25,
+    category: "Bedding",
+    condition: "Fair",
+    location: "Campus pickup",
+    description: "Still comfy.",
+    createdAt: Date.now(),
+    sellerEmail: "jordan@school.edu",
+  },
+  {
+    id: "seed-4",
+    title: "Storage Bins (Set of 3)",
+    price: 15,
+    category: "Storage",
+    condition: "Good",
+    location: "Campus pickup",
+    description: "Stackable bins, clean.",
+    createdAt: Date.now(),
+    sellerEmail: "sam@school.edu",
+  },
+];
