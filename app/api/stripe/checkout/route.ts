@@ -1,5 +1,6 @@
 import { stripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
+import { adminSupabase } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -26,11 +27,52 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    const { data: seller } = await supabase
+    if (listing.status !== "active") {
+      return NextResponse.json(
+        { error: "This listing is no longer available." },
+        { status: 400 }
+      );
+    }
+
+    if (listing.seller_id === user.id) {
+      return NextResponse.json(
+        { error: "You cannot buy your own listing." },
+        { status: 400 }
+      );
+    }
+
+    const { data: buyerProfile, error: buyerProfileError } = await supabase
+      .from("profiles")
+      .select("school_id")
+      .eq("id", user.id)
+      .single();
+
+    if (buyerProfileError || !buyerProfile?.school_id) {
+      return NextResponse.json(
+        { error: "Could not find your school profile." },
+        { status: 400 }
+      );
+    }
+
+    if (listing.school_id !== buyerProfile.school_id) {
+      return NextResponse.json(
+        { error: "You can only buy listings from your own school." },
+        { status: 403 }
+      );
+    }
+
+    const { data: seller, error: sellerError } = await adminSupabase
       .from("profiles")
       .select("stripe_account_id")
       .eq("id", listing.seller_id)
       .single();
+
+    if (sellerError) {
+      return NextResponse.json(
+        { error: `Seller lookup failed: ${sellerError.message}` },
+        { status: 500 }
+      );
+    }
 
     if (!seller?.stripe_account_id) {
       return NextResponse.json(
@@ -41,8 +83,11 @@ export async function POST(req: Request) {
 
     const price = listing.price_cents ?? 0;
 
-    // 💰 Commission logic (example: 10%)
-    const fee = Math.round(price * 0.1);
+    let feePercent = 0.1;
+    if (price >= 10000) feePercent = 0.05;
+    else if (price >= 5000) feePercent = 0.08;
+
+    const fee = Math.round(price * feePercent);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -59,19 +104,27 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
+      customer_email: user.email ?? undefined,
+      metadata: {
+        listing_id: listing.id,
+        buyer_id: user.id,
+        seller_id: listing.seller_id,
+        amount_cents: String(price),
+        fee_cents: String(fee),
+      },
       payment_intent_data: {
         application_fee_amount: fee,
         transfer_data: {
           destination: seller.stripe_account_id,
         },
       },
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/listing/${listing.id}`,
     });
 
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
-    console.error(err);
+    console.error("Checkout route error:", err);
     return NextResponse.json(
       { error: err.message || "Checkout failed" },
       { status: 500 }
