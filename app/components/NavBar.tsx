@@ -13,35 +13,50 @@ export default function NavBar() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    async function checkUser() {
+    async function loadAuth() {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      setIsLoggedIn(!!session);
+      setIsLoggedIn(!!user);
     }
 
-    checkUser();
+    loadAuth();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
+    } = supabase.auth.onAuthStateChange(async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setIsLoggedIn(!!user);
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/login");
+    setIsLoggedIn(false);
+    router.push("/");
     router.refresh();
   }
 
   return (
     <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center px-6 py-4">
-        {isLoggedIn ? (
+        {isLoggedIn === null ? (
+          <div className="flex w-full justify-center">
+            <Image
+              src="/logo.png"
+              alt="DormSweep Logo"
+              width={120}
+              height={52}
+              priority
+            />
+          </div>
+        ) : isLoggedIn ? (
           <>
             <div className="flex-1">
               <Link href="/" className="inline-flex items-center">

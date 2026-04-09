@@ -16,12 +16,13 @@ type Listing = {
 
 export default function Home() {
   const supabase = createClient();
+
   const [featured, setFeatured] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    async function loadListings() {
+    async function loadPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -66,8 +67,8 @@ export default function Home() {
       setLoading(false);
     }
 
-    loadListings();
-  }, [supabase]);
+    loadPage();
+  }, []);
 
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
@@ -128,7 +129,16 @@ export default function Home() {
           </div>
         </section>
 
-        {!loggedIn ? (
+        {loggedIn === null ? (
+          <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
+              <p className="text-2xl font-bold">Loading DormSweep...</p>
+              <p className="mt-3 text-gray-600">
+                Getting your campus marketplace ready.
+              </p>
+            </div>
+          </section>
+        ) : !loggedIn ? (
           <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
             <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
               <p className="text-2xl font-bold">
