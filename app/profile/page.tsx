@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import DeleteListingButton from "@/app/components/DeleteListingButton";
+import DeleteListingButton from "../components/DeleteListingButton";
+import ConnectStripeButton from "../components/ConnectStripeButton";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -15,6 +16,12 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("stripe_account_id")
+    .eq("id", user.id)
+    .single();
+
   const { data: listings, error: listingsError } = await supabase
     .from("listings")
     .select("*")
@@ -26,21 +33,32 @@ export default async function ProfilePage() {
   }
 
   const myListings = listings ?? [];
+  const hasStripeAccount = !!profile?.stripe_account_id;
 
   return (
     <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
       <div className="mx-auto max-w-4xl bg-white border rounded-2xl p-6 shadow-sm">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold">Profile</h1>
             <p className="text-gray-600 text-sm mt-1">{user.email}</p>
           </div>
 
-          <form action="/auth/signout" method="post">
-            <button className="border px-4 py-2 rounded-xl font-medium">
-              Log out
-            </button>
-          </form>
+          <div className="flex items-center gap-3">
+            {hasStripeAccount ? (
+              <p className="text-sm text-green-600 font-medium">
+                Payout account connected
+              </p>
+            ) : (
+              <ConnectStripeButton />
+            )}
+
+            <form action="/auth/signout" method="post">
+              <button className="border px-4 py-2 rounded-xl font-medium">
+                Log out
+              </button>
+            </form>
+          </div>
         </div>
 
         <h2 className="mt-8 text-xl font-semibold">My Listings</h2>
