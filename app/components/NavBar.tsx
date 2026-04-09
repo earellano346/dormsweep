@@ -10,7 +10,7 @@ export default function NavBar() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function checkUser() {
@@ -30,7 +30,7 @@ export default function NavBar() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -39,40 +39,56 @@ export default function NavBar() {
   }
 
   return (
-    <nav className="border-b bg-white">
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        
-        {/* LOGO ONLY */}
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/logo.png"
-            alt="DormSweep Logo"
-            width={140}
-            height={60}
-            priority
-          />
-        </Link>
+    <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center px-6 py-4">
+        {isLoggedIn ? (
+          <>
+            <div className="flex-1">
+              <Link href="/" className="inline-flex items-center">
+                <Image
+                  src="/logo.png"
+                  alt="DormSweep Logo"
+                  width={120}
+                  height={52}
+                  priority
+                />
+              </Link>
+            </div>
 
-        {/* NAV LINKS */}
-        <div className="flex gap-4 items-center">
-          <Link href="/">Home</Link>
-          <Link href="/browse">Browse</Link>
-          <Link href="/list">List</Link>
-
-          {isLoggedIn ? (
-            <>
-              <Link href="/profile">Profile</Link>
+            <div className="flex items-center gap-5 text-sm font-medium text-gray-700">
+              <Link href="/" className="hover:text-black">
+                Home
+              </Link>
+              <Link href="/browse" className="hover:text-black">
+                Browse
+              </Link>
+              <Link href="/list" className="hover:text-black">
+                List
+              </Link>
+              <Link href="/profile" className="hover:text-black">
+                Profile
+              </Link>
               <button
                 onClick={handleLogout}
-                className="border px-3 py-1 rounded-lg"
+                className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
               >
                 Log out
               </button>
-            </>
-          ) : (
-            <Link href="/login">Login</Link>
-          )}
-        </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex w-full justify-center">
+            <Link href="/" className="inline-flex items-center">
+              <Image
+                src="/logo.png"
+                alt="DormSweep Logo"
+                width={120}
+                height={52}
+                priority
+              />
+            </Link>
+          </div>
+        )}
       </div>
     </nav>
   );
