@@ -1,255 +1,191 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function ListItem() {
-  const router = useRouter();
+type Listing = {
+  id: string;
+  title: string;
+  description: string | null;
+  price_cents: number | null;
+  image_url: string | null;
+  category: string | null;
+  condition: string | null;
+  location: string | null;
+  status: string | null;
+  school_id: string;
+};
+
+type ListingImage = {
+  id: string;
+  image_url: string;
+  sort_order: number;
+};
+
+export default function ListingPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const supabase = createClient();
 
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState<number>(25);
-  const [category, setCategory] = useState("Bedding");
-  const [condition, setCondition] = useState("Good");
-  const [location, setLocation] = useState("Campus pickup");
-  const [description, setDescription] = useState("");
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [posted, setPosted] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [item, setItem] = useState<Listing | null>(null);
+  const [images, setImages] = useState<ListingImage[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    async function loadData() {
+      const { id } = await params;
 
-    if (imageFiles.length === 0) {
-      alert("Please add at least one picture.");
-      return;
-    }
+      const { data: listingData } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-    setLoading(true);
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setLoading(false);
-      alert("Please sign in first.");
-      router.push("/login");
-      return;
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("school_id")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || !profile?.school_id) {
-      setLoading(false);
-      alert("Could not find your school.");
-      return;
-    }
-
-    const uploadedUrls: string[] = [];
-
-    for (const file of imageFiles) {
-      const fileExt = file.name.split(".").pop();
-      const filePath = `${user.id}/${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("listing-images")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: file.type,
-        });
-
-      if (uploadError) {
+      if (!listingData) {
         setLoading(false);
-        alert(uploadError.message);
         return;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from("listing-images")
-        .getPublicUrl(filePath);
+      const { data: imageData } = await supabase
+        .from("listing_images")
+        .select("*")
+        .eq("listing_id", id)
+        .order("sort_order", { ascending: true });
 
-      uploadedUrls.push(publicUrlData.publicUrl);
-    }
+      const finalImages = imageData ?? [];
 
-    const primaryImageUrl = uploadedUrls[0] ?? null;
-
-    const { data: insertedListing, error: insertListingError } = await supabase
-      .from("listings")
-      .insert([
-        {
-          seller_id: user.id,
-          school_id: profile.school_id,
-          title,
-          description,
-          price_cents: Number(price) * 100,
-          category,
-          condition,
-          location,
-          status: "active",
-          image_url: primaryImageUrl,
-        },
-      ])
-      .select("id")
-      .single();
-
-    if (insertListingError || !insertedListing) {
+      setItem(listingData);
+      setImages(finalImages);
+      setSelectedImage(
+        finalImages[0]?.image_url ?? listingData.image_url ?? null
+      );
       setLoading(false);
-      alert(insertListingError?.message ?? "Failed to create listing.");
-      return;
     }
 
-    const imageRows = uploadedUrls.map((url, index) => ({
-      listing_id: insertedListing.id,
-      image_url: url,
-      sort_order: index,
-    }));
+    loadData();
+  }, [params]);
 
-    const { error: insertImagesError } = await supabase
-      .from("listing_images")
-      .insert(imageRows);
+  async function handleBuy(listingId: string) {
+    const res = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      body: JSON.stringify({ listingId }),
+    });
 
-    setLoading(false);
+    const data = await res.json();
 
-    if (insertImagesError) {
-      alert(insertImagesError.message);
-      return;
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert(data.error || "Checkout failed");
     }
+  }
 
-    setPosted(true);
-    setTitle("");
-    setPrice(25);
-    setCategory("Bedding");
-    setCondition("Good");
-    setLocation("Campus pickup");
-    setDescription("");
-    setImageFiles([]);
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
+        <div className="max-w-4xl mx-auto bg-white border rounded-2xl p-6">
+          <p>Loading...</p>
+        </div>
+      </main>
+    );
+  }
 
-    router.refresh();
+  if (!item) {
+    return (
+      <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
+        <div className="max-w-4xl mx-auto bg-white border rounded-2xl p-6">
+          <h1 className="text-2xl font-bold">Listing not found</h1>
+          <Link
+            href="/browse"
+            className="inline-block mt-6 border px-4 py-2 rounded-xl"
+          >
+            Back
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   return (
     <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-      <div className="max-w-3xl">
-        <h1 className="text-2xl font-bold">List an item</h1>
+      <div className="max-w-4xl mx-auto bg-white border rounded-2xl p-6">
+        {/* MAIN IMAGE */}
+        {selectedImage ? (
+          <img
+            src={selectedImage}
+            alt={item.title}
+            className="w-full h-80 object-contain rounded-xl mb-4 bg-gray-100"
+          />
+        ) : (
+          <div className="w-full h-80 bg-gray-100 rounded-xl mb-4" />
+        )}
 
-        <form
-          onSubmit={submit}
-          className="mt-4 border rounded-2xl bg-white p-6 shadow-sm"
+        {/* THUMBNAILS */}
+        {images.length > 1 && (
+          <div className="flex gap-3 overflow-x-auto mb-6">
+            {images.map((img) => (
+              <button
+                key={img.id}
+                onClick={() => setSelectedImage(img.image_url)}
+                className={`border rounded-lg p-1 ${
+                  selectedImage === img.image_url
+                    ? "border-black"
+                    : "border-gray-300"
+                }`}
+              >
+                <img
+                  src={img.image_url}
+                  alt="Listing thumbnail"
+                  className="h-20 w-20 object-contain rounded bg-gray-100"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* TITLE + PRICE */}
+        <div className="flex justify-between">
+          <h1 className="text-2xl font-bold">{item.title}</h1>
+          <span className="text-xl font-bold">
+            ${((item.price_cents ?? 0) / 100).toFixed(2)}
+          </span>
+        </div>
+
+        {/* DETAILS */}
+        <p className="mt-2 text-gray-600">
+          {item.category ?? "Uncategorized"}
+          {item.condition ? ` • ${item.condition}` : ""}
+        </p>
+
+        {item.location && (
+          <p className="mt-2 text-sm text-gray-600">
+            Pickup: {item.location}
+          </p>
+        )}
+
+        {item.description && (
+          <p className="mt-4 text-gray-700">{item.description}</p>
+        )}
+
+        {/* 🔥 BUY BUTTON */}
+        <button
+          onClick={() => handleBuy(item.id)}
+          className="bg-black text-white px-4 py-3 rounded-xl mt-6 w-full font-medium"
         >
-          <label className="block text-sm font-medium">Title</label>
-          <input
-            className="mt-1 w-full border rounded-xl px-4 py-3"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
+          Buy Now
+        </button>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium">Price</label>
-              <input
-                className="mt-1 w-full border rounded-xl px-4 py-3"
-                type="number"
-                min="0"
-                step="1"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Category</label>
-              <select
-                className="mt-1 w-full border rounded-xl px-4 py-3 bg-white"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option>Bedding</option>
-                <option>Appliances</option>
-                <option>Lighting</option>
-                <option>Storage</option>
-                <option>Decor</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium">Condition</label>
-              <select
-                className="mt-1 w-full border rounded-xl px-4 py-3 bg-white"
-                value={condition}
-                onChange={(e) => setCondition(e.target.value)}
-              >
-                <option>Like New</option>
-                <option>Good</option>
-                <option>Fair</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Pickup location</label>
-              <input
-                className="mt-1 w-full border rounded-xl px-4 py-3"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <label className="block text-sm font-medium mt-4">Description</label>
-          <textarea
-            className="mt-1 w-full border rounded-xl px-4 py-3"
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-
-          <label className="block text-sm font-medium mt-4">
-            Listing pictures
-          </label>
-          <input
-            className="mt-1 w-full border rounded-xl px-4 py-3 bg-white"
-            type="file"
-            accept="image/*"
-            multiple
-            required
-            onChange={(e) => setImageFiles(Array.from(e.target.files ?? []))}
-          />
-
-          {imageFiles.length > 0 && (
-            <p className="mt-2 text-sm text-gray-600">
-              {imageFiles.length} image{imageFiles.length > 1 ? "s" : ""} selected
-            </p>
-          )}
-
-          <button
-            disabled={loading}
-            className="mt-6 bg-black text-white px-5 py-3 rounded-xl font-medium disabled:opacity-50"
-          >
-            {loading ? "Posting..." : "Post listing"}
-          </button>
-
-          {posted && (
-            <div className="mt-4 border rounded-xl bg-gray-50 p-4">
-              <p className="font-semibold">Posted!</p>
-              <p className="text-sm text-gray-600">
-                Go to the homepage or your profile to see it.
-              </p>
-            </div>
-          )}
-        </form>
+        {/* BACK */}
+        <Link
+          href="/browse"
+          className="inline-block mt-4 border px-4 py-2 rounded-xl"
+        >
+          Back
+        </Link>
       </div>
     </main>
   );
