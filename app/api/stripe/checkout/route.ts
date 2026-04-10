@@ -83,10 +83,14 @@ export async function POST(req: Request) {
 
     const price = listing.price_cents ?? 0;
 
-    let feePercent = 0.1;
-    if (price >= 10000) feePercent = 0.05;
-    else if (price >= 5000) feePercent = 0.08;
+    if (price <= 0) {
+      return NextResponse.json(
+        { error: "Invalid listing price." },
+        { status: 400 }
+      );
+    }
 
+    const feePercent = 0.05;
     const fee = Math.round(price * feePercent);
 
     const session = await stripe.checkout.sessions.create({
