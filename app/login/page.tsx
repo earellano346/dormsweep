@@ -10,7 +10,8 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const [signingUp, setSigningUp] = useState(false);
 
   async function syncSchool() {
     const response = await fetch("/auth/sync-school", {
@@ -28,12 +29,12 @@ export default function LoginPage() {
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setSigningUp(true);
 
     const normalizedEmail = email.toLowerCase().trim();
 
     if (!normalizedEmail.endsWith(".edu")) {
-      setLoading(false);
+      setSigningUp(false);
       alert("You must use a .edu email address.");
       return;
     }
@@ -41,46 +42,29 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      },
     });
 
+    setSigningUp(false);
+
     if (error) {
-      setLoading(false);
       alert(error.message);
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
-
-    if (signInError) {
-      setLoading(false);
-      alert(signInError.message);
-      return;
-    }
-
-    try {
-      await syncSchool();
-    } catch (err: any) {
-      setLoading(false);
-      alert(err.message);
-      return;
-    }
-
-    setLoading(false);
-    router.push("/profile");
-    router.refresh();
+    alert("Check your email to confirm your account, then come back and sign in.");
   }
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setSigningIn(true);
 
     const normalizedEmail = email.toLowerCase().trim();
 
     if (!normalizedEmail.endsWith(".edu")) {
-      setLoading(false);
+      setSigningIn(false);
       alert("You must use a .edu email address.");
       return;
     }
@@ -91,7 +75,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setLoading(false);
+      setSigningIn(false);
       alert(error.message);
       return;
     }
@@ -99,12 +83,12 @@ export default function LoginPage() {
     try {
       await syncSchool();
     } catch (err: any) {
-      setLoading(false);
+      setSigningIn(false);
       alert(err.message);
       return;
     }
 
-    setLoading(false);
+    setSigningIn(false);
     router.push("/profile");
     router.refresh();
   }
@@ -141,19 +125,21 @@ export default function LoginPage() {
           </div>
 
           <button
+            type="button"
             onClick={handleSignIn}
-            disabled={loading}
+            disabled={signingIn || signingUp}
             className="w-full rounded-xl bg-black py-3 font-medium text-white disabled:opacity-50"
           >
-            {loading ? "Loading..." : "Sign In"}
+            {signingIn ? "Signing In..." : "Sign In"}
           </button>
 
           <button
+            type="button"
             onClick={handleSignUp}
-            disabled={loading}
+            disabled={signingIn || signingUp}
             className="w-full rounded-xl border py-3 font-medium disabled:opacity-50"
           >
-            {loading ? "Loading..." : "Create Account"}
+            {signingUp ? "Creating Account..." : "Create Account"}
           </button>
         </form>
       </div>
