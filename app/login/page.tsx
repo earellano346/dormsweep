@@ -54,7 +54,7 @@ export default function LoginPage() {
       return;
     }
 
-    alert("Check your email to confirm your account, then come back and sign in.");
+    alert("Check your email to confirm your account.");
   }
 
   async function handleSignIn(e: React.FormEvent) {
