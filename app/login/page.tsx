@@ -42,9 +42,6 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-      },
     });
 
     setSigningUp(false);
