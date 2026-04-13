@@ -1,8 +1,5 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 
 type Listing = {
   id: string;
@@ -14,42 +11,27 @@ type Listing = {
   school_id: string;
 };
 
-export default function Home() {
-  const supabase = createClient();
+export default async function Home() {
+  const supabase = await createClient();
 
-  const [featured, setFeatured] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    async function loadPage() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  let loggedIn = false;
+  let featured: Listing[] = [];
 
-      if (!user) {
-        setLoggedIn(false);
-        setFeatured([]);
-        setLoading(false);
-        return;
-      }
+  if (user) {
+    loggedIn = true;
 
-      setLoggedIn(true);
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("school_id")
+      .eq("id", user.id)
+      .single();
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile?.school_id) {
-        console.error(profileError?.message || "No school found");
-        setFeatured([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
+    if (profile?.school_id) {
+      const { data } = await supabase
         .from("listings")
         .select("*")
         .eq("status", "active")
@@ -57,18 +39,9 @@ export default function Home() {
         .order("created_at", { ascending: false })
         .limit(4);
 
-      if (error) {
-        console.error(error.message);
-        setFeatured([]);
-      } else {
-        setFeatured(data ?? []);
-      }
-
-      setLoading(false);
+      featured = (data as Listing[]) ?? [];
     }
-
-    loadPage();
-  }, []);
+  }
 
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
@@ -129,16 +102,7 @@ export default function Home() {
           </div>
         </section>
 
-        {loggedIn === null ? (
-          <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
-              <p className="text-2xl font-bold">Loading DormSweep...</p>
-              <p className="mt-3 text-gray-600">
-                Getting your campus marketplace ready.
-              </p>
-            </div>
-          </section>
-        ) : !loggedIn ? (
+        {!loggedIn ? (
           <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
             <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
               <p className="text-2xl font-bold">
@@ -178,9 +142,7 @@ export default function Home() {
               </Link>
             </div>
 
-            {loading ? (
-              <p className="mt-6 text-sm text-gray-600">Loading...</p>
-            ) : featured.length === 0 ? (
+            {featured.length === 0 ? (
               <div className="mt-6 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
                 <p className="font-medium text-gray-700">No listings yet.</p>
                 <p className="mt-1 text-sm text-gray-500">
