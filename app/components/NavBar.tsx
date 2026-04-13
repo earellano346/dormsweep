@@ -41,6 +41,10 @@ export default async function NavBar() {
                 Profile
               </Link>
 
+              <span className="hidden text-gray-500 md:inline">
+                {user.email}
+              </span>
+
               <form action="/auth/signout" method="post">
                 <button className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50">
                   Log out
