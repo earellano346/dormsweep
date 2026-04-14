@@ -6,15 +6,15 @@ export default function ConfirmedPage() {
       <div className="w-full max-w-md rounded-2xl border bg-white p-8 shadow-sm text-center">
         <h1 className="text-2xl font-bold">Email confirmed</h1>
         <p className="mt-3 text-sm text-gray-600">
-          Your school email has been verified successfully.
+          Your school email has been verified successfully. You can now log in to continue.
         </p>
 
         <div className="mt-6 space-y-3">
           <Link
-            href="/profile"
+            href="/login"
             className="block w-full rounded-xl bg-black py-3 font-medium text-white"
           >
-            Go to Profile
+            Go to Log In
           </Link>
 
           <Link

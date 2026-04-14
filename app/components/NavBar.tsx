@@ -2,26 +2,35 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
 export default function NavBar() {
   const supabase = createClient();
   const pathname = usePathname();
+  const router = useRouter();
 
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    async function loadUser() {
+    async function getUser() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       setUser(user);
     }
 
-    loadUser();
-  }, []);
+    getUser();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      getUser();
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const isLoggedIn = !!user;
 
@@ -38,23 +47,24 @@ export default function NavBar() {
         }`}
       >
         {label}
-
-        {/* active underline */}
         {isActive && (
-          <span className="absolute -bottom-1 left-0 h-[2px] w-full bg-gradient-to-r from-blue-500 to-orange-400 rounded-full" />
+          <span className="absolute -bottom-1 left-0 h-[2px] w-full rounded-full bg-gradient-to-r from-blue-500 to-orange-400" />
         )}
       </Link>
     );
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
+
   return (
-    <nav className="bg-white/80 backdrop-blur-md shadow-sm">
-      {/* gradient accent bar */}
+    <nav className="bg-white/80 shadow-sm backdrop-blur-md">
       <div className="h-[2px] w-full bg-gradient-to-r from-blue-500 via-orange-400 to-blue-500" />
 
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 border-b border-gray-200">
-
-        {/* LOGO */}
+      <div className="mx-auto flex max-w-6xl items-center justify-between border-b border-gray-200 px-6 py-4">
         <Link href="/" className="inline-flex items-center">
           <Image
             src="/logo.png"
@@ -62,13 +72,11 @@ export default function NavBar() {
             width={110}
             height={48}
             priority
-            className="h-auto w-[110px] object-contain"
+            className="object-contain"
           />
         </Link>
 
-        {/* NAV LINKS */}
         <div className="flex items-center gap-5 text-sm font-medium">
-
           {navLink("/", "Home")}
           {navLink("/browse", "Browse")}
           {navLink("/list", "List")}
@@ -81,11 +89,12 @@ export default function NavBar() {
                 {user.email}
               </span>
 
-              <form action="/auth/signout" method="post">
-                <button className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50">
-                  Log out
-                </button>
-              </form>
+              <button
+                onClick={handleLogout}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+              >
+                Log out
+              </button>
             </>
           ) : (
             <Link
