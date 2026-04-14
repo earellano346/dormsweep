@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -16,6 +16,19 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const passwordsMatch =
+    confirmPassword.length === 0 || password === confirmPassword;
+
+  const canSubmit =
+    fullName.trim().length > 0 &&
+    email.trim().length > 0 &&
+    phoneNumber.trim().length > 0 &&
+    password.length >= 6 &&
+    confirmPassword.length > 0 &&
+    password === confirmPassword &&
+    accepted &&
+    !creating;
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -144,12 +157,18 @@ export default function SignUpPage() {
             <label className="block text-sm font-medium">Confirm Password</label>
             <input
               type="password"
-              className="mt-1 w-full rounded-xl border px-4 py-3"
+              className={`mt-1 w-full rounded-xl border px-4 py-3 ${
+                !passwordsMatch ? "border-red-400" : ""
+              }`}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm password"
               required
             />
+
+            {!passwordsMatch && (
+              <p className="mt-2 text-sm text-red-600">Passwords do not match.</p>
+            )}
           </div>
 
           <div className="flex items-start gap-2 text-sm">
@@ -161,11 +180,21 @@ export default function SignUpPage() {
             />
             <p className="text-gray-600">
               I agree to the{" "}
-              <Link href="/terms" className="underline hover:text-black">
+              <Link
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-black"
+              >
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="underline hover:text-black">
+              <Link
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-black"
+              >
                 Privacy Policy
               </Link>
               .
@@ -174,7 +203,7 @@ export default function SignUpPage() {
 
           <button
             type="submit"
-            disabled={creating || !accepted}
+            disabled={!canSubmit}
             className="w-full rounded-xl bg-black py-3 font-medium text-white disabled:opacity-50"
           >
             {creating ? "Creating Account..." : "Create Account"}
