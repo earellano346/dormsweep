@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function ConfirmedPage() {
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <main className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-2xl border bg-white p-8 shadow-sm text-center">
         <h1 className="text-2xl font-bold">Email confirmed</h1>
         <p className="mt-3 text-sm text-gray-600">

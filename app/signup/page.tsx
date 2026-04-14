@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -13,6 +14,7 @@ export default function SignUpPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [accepted, setAccepted] = useState(false);
   const [creating, setCreating] = useState(false);
 
   async function handleSignUp(e: React.FormEvent) {
@@ -48,6 +50,12 @@ export default function SignUpPage() {
     if (password !== confirmPassword) {
       setCreating(false);
       alert("Passwords do not match.");
+      return;
+    }
+
+    if (!accepted) {
+      setCreating(false);
+      alert("You must accept the Terms and Privacy Policy.");
       return;
     }
 
@@ -144,9 +152,29 @@ export default function SignUpPage() {
             />
           </div>
 
+          <div className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              className="mt-1"
+            />
+            <p className="text-gray-600">
+              I agree to the{" "}
+              <Link href="/terms" className="underline hover:text-black">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="underline hover:text-black">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          </div>
+
           <button
             type="submit"
-            disabled={creating}
+            disabled={creating || !accepted}
             className="w-full rounded-xl bg-black py-3 font-medium text-white disabled:opacity-50"
           >
             {creating ? "Creating Account..." : "Create Account"}
