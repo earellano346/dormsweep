@@ -8,7 +8,6 @@ export default function ListingPage({ params }: { params: any }) {
   const supabase = createClient();
 
   const [item, setItem] = useState<any>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,7 +21,6 @@ export default function ListingPage({ params }: { params: any }) {
         .single();
 
       setItem(data);
-      setSelectedImage(data?.image_url ?? null);
       setLoading(false);
     }
 
@@ -40,49 +38,41 @@ export default function ListingPage({ params }: { params: any }) {
   }
 
   if (loading) return <p className="p-6">Loading...</p>;
-
-  if (!item) return <p className="p-6">Listing not found</p>;
+  if (!item) return <p className="p-6">Not found</p>;
 
   return (
-    <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-      <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8 bg-white p-6 rounded-3xl shadow-xl">
+    <main className="min-h-screen -mx-6 -my-6 p-6">
+      <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
 
-        {/* IMAGE */}
-        <div>
-          {selectedImage ? (
-            <img
-              src={selectedImage}
-              className="w-full h-96 object-contain bg-gray-100 rounded-2xl"
-            />
-          ) : (
-            <div className="h-96 bg-gray-100 rounded-2xl" />
-          )}
+        {/* IMAGE CARD */}
+        <div className="bg-white p-6 rounded-3xl shadow-xl">
+          <img
+            src={item.image_url}
+            className="w-full h-80 object-contain bg-gray-100 rounded-xl"
+          />
         </div>
 
-        {/* DETAILS */}
-        <div className="flex flex-col justify-between">
-          <div>
-            <p className="text-sm text-gray-500">
-              {item.category || "Other"}
-            </p>
+        {/* DETAILS CARD */}
+        <div className="bg-white p-6 rounded-3xl shadow-xl flex flex-col justify-between">
 
-            <h1 className="text-3xl font-bold mt-1">{item.title}</h1>
+          <div>
+            <p className="text-sm text-gray-500">{item.category}</p>
+
+            <h1 className="text-3xl font-bold mt-2">{item.title}</h1>
 
             <p className="text-2xl font-bold mt-3">
-              ${(item.price_cents / 100).toFixed(2)}
+              ${(item.price_cents/100).toFixed(2)}
             </p>
 
-            {item.description && (
-              <p className="mt-4 text-gray-600">
-                {item.description}
-              </p>
-            )}
+            <p className="mt-4 text-gray-600">
+              {item.description}
+            </p>
           </div>
 
           <div className="mt-6 space-y-3">
             <button
               onClick={handleBuy}
-              className="w-full bg-black text-white py-3 rounded-xl font-medium hover:shadow-lg"
+              className="w-full bg-black text-white py-3 rounded-xl"
             >
               Buy Now
             </button>
@@ -91,9 +81,10 @@ export default function ListingPage({ params }: { params: any }) {
               href="/browse"
               className="block text-center border py-3 rounded-xl"
             >
-              Back to browse
+              Back
             </Link>
           </div>
+
         </div>
       </div>
     </main>
