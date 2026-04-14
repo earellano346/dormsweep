@@ -25,6 +25,7 @@ export default function BrowsePage() {
   const [filtered, setFiltered] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -69,16 +70,24 @@ export default function BrowsePage() {
     load();
   }, []);
 
-  // filter logic
+  // 🔥 FILTER LOGIC (CATEGORY + SEARCH)
   useEffect(() => {
-    if (selectedCategory === "All") {
-      setFiltered(listings);
-    } else {
-      setFiltered(
-        listings.filter((item) => item.category === selectedCategory)
+    let result = listings;
+
+    if (selectedCategory !== "All") {
+      result = result.filter(
+        (item) => item.category === selectedCategory
       );
     }
-  }, [selectedCategory, listings]);
+
+    if (search.trim() !== "") {
+      result = result.filter((item) =>
+        item.title.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    setFiltered(result);
+  }, [selectedCategory, search, listings]);
 
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6 bg-gray-50">
@@ -90,6 +99,17 @@ export default function BrowsePage() {
           <p className="mt-1 text-gray-600">
             Find items students at your school are selling.
           </p>
+
+          {/* 🔥 SEARCH BAR */}
+          <div className="mt-5">
+            <input
+              type="text"
+              placeholder="Search items (ex: fridge, textbook, chair...)"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
 
           {/* CATEGORY FILTERS */}
           <div className="mt-5 flex flex-wrap gap-2">
@@ -119,7 +139,7 @@ export default function BrowsePage() {
             <div className="text-center py-12">
               <p className="text-xl font-semibold">No listings found</p>
               <p className="text-gray-500 mt-2">
-                Try another category or be the first to post.
+                Try another search or category.
               </p>
 
               <Link
