@@ -30,6 +30,7 @@ export default async function Home() {
       .single();
 
     if (profile?.school_id) {
+      // ACTIVE listings
       const { data: active } = await supabase
         .from("listings")
         .select("*")
@@ -40,6 +41,7 @@ export default async function Home() {
 
       featured = (active as Listing[]) ?? [];
 
+      // SOLD listings
       const { data: sold } = await supabase
         .from("listings")
         .select("category")
@@ -47,7 +49,7 @@ export default async function Home() {
         .eq("school_id", profile.school_id);
 
       if (sold) {
-        soldStats = sold.reduce((acc: Record<string, number>, item: { category: string | null }) => {
+        soldStats = sold.reduce((acc: Record<string, number>, item: any) => {
           const category = item.category || "Other";
           acc[category] = (acc[category] || 0) + 1;
           return acc;
@@ -59,6 +61,8 @@ export default async function Home() {
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
       <div className="mx-auto max-w-6xl space-y-8">
+
+        {/* HERO */}
         <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
           <div className="max-w-3xl">
             <p className="inline-flex rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-sm">
@@ -100,48 +104,25 @@ export default async function Home() {
                 </>
               )}
             </div>
-
-            <div className="mt-8 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="text-sm font-semibold">Campus-only</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Listings are filtered by your school email
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="text-sm font-semibold">Fast listings</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Post items with photos in minutes
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="text-sm font-semibold">Built for students</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Perfect for move-in, move-out, and dorm deals
-                </p>
-              </div>
-            </div>
           </div>
         </section>
 
+        {/* IF NOT LOGGED IN */}
         {!user ? (
           <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
             <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
               <p className="text-2xl font-bold">
                 Log in with your student email to unlock your campus marketplace
               </p>
+
               <p className="mt-3 text-gray-600">
-                DormSweep only shows listings from students at your school, so
-                sign in with your .edu email to see what’s available on your
-                campus.
+                DormSweep only shows listings from students at your school.
               </p>
 
               <div className="mt-6 flex justify-center">
                 <Link
                   href="/login"
-                  className="rounded-xl bg-black px-5 py-3 font-medium text-white transition hover:-translate-y-0.5 hover:shadow-lg"
+                  className="rounded-xl bg-black px-5 py-3 font-medium text-white"
                 >
                   Go to Login
                 </Link>
@@ -150,85 +131,71 @@ export default async function Home() {
           </section>
         ) : (
           <>
+            {/* SOLD STATS */}
             {Object.keys(soldStats).length > 0 && (
               <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold">🔥 Popular on your campus</h2>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Here’s what students at your school have been buying.
-                    </p>
-                  </div>
-                </div>
+                <h2 className="text-2xl font-bold mb-4">
+                  🔥 Popular on your campus
+                </h2>
 
-                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                   {Object.entries(soldStats).map(([category, count]) => (
                     <div
                       key={category}
                       className="rounded-2xl border border-gray-200 bg-white p-4 text-center shadow-sm"
                     >
                       <p className="text-2xl font-bold">{count}</p>
-                      <p className="mt-1 text-sm text-gray-500">{category} sold</p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {category}: {count} sold
+                      </p>
                     </div>
                   ))}
                 </div>
               </section>
             )}
 
+            {/* TRENDING */}
             <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold">🔥 Trending on your campus</h2>
-                  <p className="mt-1 text-sm text-gray-600">
-                    The latest listings students at your school are posting right now.
-                  </p>
-                </div>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">
+                  🔥 Trending Listings
+                </h2>
 
                 <Link
                   href="/browse"
-                  className="hidden rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:shadow-md sm:inline-flex"
+                  className="text-sm underline"
                 >
                   See all
                 </Link>
               </div>
 
               {featured.length === 0 ? (
-                <div className="mt-6 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-                  <p className="font-medium text-gray-700">No listings yet.</p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Once people at your school start posting, they’ll show up here.
-                  </p>
-                </div>
+                <p className="mt-6 text-gray-500">
+                  No listings yet.
+                </p>
               ) : (
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   {featured.map((item) => (
                     <Link
                       key={item.id}
                       href={`/listing/${item.id}`}
-                      className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                      className="border rounded-xl p-4 hover:shadow-md"
                     >
-                      {item.image_url ? (
+                      {item.image_url && (
                         <img
                           src={item.image_url}
-                          alt={item.title}
-                          className="mb-3 h-36 w-full rounded-xl bg-gray-100 object-contain"
+                          className="h-32 w-full object-contain mb-3"
                         />
-                      ) : (
-                        <div className="mb-3 h-36 rounded-xl bg-gray-100" />
                       )}
 
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="line-clamp-2 font-semibold transition group-hover:text-gray-700">
+                      <div className="flex justify-between">
+                        <span className="font-semibold">
                           {item.title}
                         </span>
-                        <span className="shrink-0 text-sm font-bold">
-                          ${((item.price_cents ?? 0) / 100).toFixed(2)}
+                        <span className="font-bold">
+                          ${(item.price_cents! / 100).toFixed(2)}
                         </span>
                       </div>
-
-                      <p className="mt-2 text-xs text-gray-500">
-                        Tap to view listing
-                      </p>
                     </Link>
                   ))}
                 </div>
