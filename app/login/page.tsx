@@ -86,7 +86,11 @@ export default function LoginPage() {
     }
 
     setSigningIn(false);
-    router.push("/profile");
+
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+
+    router.push(next || "/profile");
     router.refresh();
   }
 
