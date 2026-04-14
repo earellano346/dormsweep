@@ -17,12 +17,21 @@ const CATEGORIES = [
   "Other",
 ];
 
+const CONDITIONS = [
+  "New",
+  "Like New",
+  "Good",
+  "Fair",
+  "Used",
+];
+
 export default function ListPage() {
   const router = useRouter();
   const supabase = createClient();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [condition, setCondition] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [pickupLocation, setPickupLocation] = useState("");
@@ -37,6 +46,7 @@ export default function ListPage() {
   const canSubmit =
     title.trim().length > 0 &&
     description.trim().length > 0 &&
+    condition.trim().length > 0 &&
     price.trim().length > 0 &&
     Number(price) > 0 &&
     category.trim().length > 0 &&
@@ -50,7 +60,7 @@ export default function ListPage() {
 
     if (!canSubmit) {
       alert(
-        "Fill out every field, including pickup location, phone number, price, and picture."
+        "Fill out every field, including condition, pickup location, phone number, price, and picture."
       );
       return;
     }
@@ -109,6 +119,7 @@ export default function ListPage() {
         .insert({
           title: title.trim(),
           description: description.trim(),
+          condition: condition.trim(),
           category: category.trim(),
           price_cents: Math.round(Number(price) * 100),
           image_url: imageUrl,
@@ -173,6 +184,23 @@ export default function ListPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Condition</label>
+              <select
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={condition}
+                onChange={(e) => setCondition(e.target.value)}
+                required
+              >
+                <option value="">Select condition</option>
+                {CONDITIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
