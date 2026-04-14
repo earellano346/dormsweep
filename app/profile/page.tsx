@@ -1,106 +1,106 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import DeleteListingButton from "../components/DeleteListingButton";
-import ConnectStripeButton from "../components/ConnectStripeButton";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
 
   const {
     data: { user },
-    error: userError,
   } = await supabase.auth.getUser();
 
-  if (userError || !user) {
+  if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("stripe_account_id")
-    .eq("id", user.id)
-    .single();
-
-  const { data: listings, error: listingsError } = await supabase
+  // ACTIVE LISTINGS
+  const { data: activeListings } = await supabase
     .from("listings")
     .select("*")
     .eq("seller_id", user.id)
+    .eq("status", "active")
     .order("created_at", { ascending: false });
 
-  if (listingsError) {
-    console.error("Error loading listings:", listingsError.message);
-  }
-
-  const myListings = listings ?? [];
-  const hasStripeAccount = !!profile?.stripe_account_id;
+  // SOLD LISTINGS
+  const { data: soldListings } = await supabase
+    .from("listings")
+    .select("*")
+    .eq("seller_id", user.id)
+    .eq("status", "sold")
+    .order("sold_at", { ascending: false });
 
   return (
-    <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-      <div className="mx-auto max-w-4xl bg-white border rounded-2xl p-6 shadow-sm">
-        <div className="flex justify-between items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">Profile</h1>
-            <p className="text-gray-600 text-sm mt-1">{user.email}</p>
-          </div>
+    <main className="min-h-screen -mx-6 -my-6 p-6">
+      <div className="mx-auto max-w-5xl space-y-8">
+        <h1 className="text-3xl font-bold">Your Listings</h1>
 
-          <div className="flex items-center gap-3">
-            {hasStripeAccount ? (
-              <p className="text-sm text-green-600 font-medium">
-                Payout account connected
-              </p>
-            ) : (
-              <ConnectStripeButton />
-            )}
+        {/* ACTIVE */}
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Active Listings</h2>
 
-            <form action="/auth/signout" method="post">
-              <button className="border px-4 py-2 rounded-xl font-medium">
-                Log out
-              </button>
-            </form>
-          </div>
-        </div>
+          {!activeListings || activeListings.length === 0 ? (
+            <p className="text-gray-500">No active listings.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeListings.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/listing/${item.id}`}
+                  className="rounded-2xl border p-4 shadow-sm hover:shadow-md"
+                >
+                  {item.image_url && (
+                    <img
+                      src={item.image_url}
+                      className="h-40 w-full object-contain mb-3 rounded-xl"
+                    />
+                  )}
+                  <div className="flex justify-between">
+                    <span className="font-semibold">{item.title}</span>
+                    <span className="font-bold">
+                      ${(item.price_cents / 100).toFixed(2)}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
 
-        <h2 className="mt-8 text-xl font-semibold">My Listings</h2>
+        {/* SOLD */}
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Sold</h2>
 
-        {myListings.length === 0 ? (
-          <p className="mt-3 text-gray-600 text-sm">
-            You haven’t posted anything yet.
-          </p>
-        ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {myListings.map((item) => (
-              <div key={item.id} className="border rounded-xl p-4">
-                <div className="flex justify-between items-start gap-3">
-                  <div>
-                    <p className="font-semibold">{item.title}</p>
+          {!soldListings || soldListings.length === 0 ? (
+            <p className="text-gray-500">No sold items yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {soldListings.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border p-4 shadow-sm opacity-70"
+                >
+                  {item.image_url && (
+                    <img
+                      src={item.image_url}
+                      className="h-40 w-full object-contain mb-3 rounded-xl"
+                    />
+                  )}
 
-                    {item.description && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        {item.description}
-                      </p>
-                    )}
-
-                    <p className="text-sm text-gray-600 mt-1">
-                      ${((item.price_cents ?? 0) / 100).toFixed(2)}
-                    </p>
+                  <div className="flex justify-between">
+                    <span className="font-semibold">{item.title}</span>
+                    <span className="font-bold">
+                      ${(item.price_cents / 100).toFixed(2)}
+                    </span>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    <Link
-                      href={`/listing/${item.id}`}
-                      className="border px-3 py-2 rounded-xl text-sm font-medium text-center"
-                    >
-                      View
-                    </Link>
-
-                    <DeleteListingButton listingId={item.id} />
-                  </div>
+                  <p className="mt-2 text-sm text-green-600 font-medium">
+                    Sold
+                  </p>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
