@@ -25,6 +25,8 @@ export default function ListPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +40,8 @@ export default function ListPage() {
     price.trim().length > 0 &&
     Number(price) > 0 &&
     category.trim().length > 0 &&
+    pickupLocation.trim().length > 0 &&
+    phoneNumber.trim().length > 0 &&
     !!imageFile &&
     !submitting;
 
@@ -45,7 +49,7 @@ export default function ListPage() {
     e.preventDefault();
 
     if (!canSubmit) {
-      alert("Fill out every field and add a picture.");
+      alert("Fill out every field, including pickup location, phone number, and picture.");
       return;
     }
 
@@ -108,6 +112,8 @@ export default function ListPage() {
           image_url: imageUrl,
           seller_id: user.id,
           school_id: profile.school_id,
+          pickup_location: pickupLocation.trim(),
+          phone_number: phoneNumber.trim(),
           status: "active",
         })
         .select("id")
@@ -127,94 +133,136 @@ export default function ListPage() {
 
   return (
     <main className="min-h-screen -mx-6 -my-6 bg-gray-50 p-6">
-      <div className="mx-auto max-w-3xl rounded-3xl bg-white p-6 shadow-xl space-y-5">
-        <div>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className="rounded-3xl bg-white p-6 shadow-xl">
           <h1 className="text-3xl font-bold">Create Listing</h1>
           <p className="mt-1 text-gray-600">
             Post your item for students at your school.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium">Title</label>
-            <input
-              type="text"
-              placeholder="Mini fridge"
-              className="mt-1 w-full rounded-xl border px-4 py-3"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <section className="rounded-3xl bg-white p-6 shadow-xl space-y-5">
+            <div>
+              <h2 className="text-xl font-semibold">Item Details</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Add the main info about what you’re selling.
+              </p>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium">Description</label>
-            <textarea
-              placeholder="Describe the item, condition, and pickup details"
-              className="mt-1 min-h-[140px] w-full rounded-xl border px-4 py-3"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Category</label>
-            <select
-              className="mt-1 w-full rounded-xl border px-4 py-3"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              required
-            >
-              <option value="">Select category</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Price ($)</label>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="25.00"
-              className="mt-1 w-full rounded-xl border px-4 py-3"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">
-              Item Picture <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              className="mt-1 w-full rounded-xl border px-4 py-3"
-              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-              required
-            />
-            <p className="mt-2 text-xs text-gray-500">
-              A picture is required before posting.
-            </p>
-          </div>
-
-          {preview && (
-            <div className="rounded-2xl border bg-gray-50 p-4">
-              <img
-                src={preview}
-                alt="Preview"
-                className="h-60 w-full object-contain rounded-xl"
+            <div>
+              <label className="block text-sm font-medium">Title</label>
+              <input
+                type="text"
+                placeholder="Mini fridge"
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
               />
             </div>
-          )}
+
+            <div>
+              <label className="block text-sm font-medium">Description</label>
+              <textarea
+                placeholder="Describe the item, condition, and pickup details"
+                className="mt-1 min-h-[140px] w-full rounded-xl border px-4 py-3"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Category</label>
+              <select
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                required
+              >
+                <option value="">Select category</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Price ($)</label>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="25.00"
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">
+                Item Picture <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                required
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                A picture is required before posting.
+              </p>
+            </div>
+
+            {preview && (
+              <div className="rounded-2xl border bg-gray-50 p-4">
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="h-60 w-full object-contain rounded-xl"
+                />
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-3xl bg-white p-6 shadow-xl space-y-5">
+            <div>
+              <h2 className="text-xl font-semibold">Pickup & Contact</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                This info is only shown to the buyer after the transaction is complete.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Pickup location on campus</label>
+              <input
+                type="text"
+                placeholder="Shen lobby, library entrance, dorm hall lounge..."
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={pickupLocation}
+                onChange={(e) => setPickupLocation(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Phone number</label>
+              <input
+                type="tel"
+                placeholder="(555) 555-5555"
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                required
+              />
+            </div>
+          </section>
 
           <button
             type="submit"
