@@ -4,188 +4,97 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-type Listing = {
-  id: string;
-  title: string;
-  description: string | null;
-  price_cents: number | null;
-  image_url: string | null;
-  category: string | null;
-  condition: string | null;
-  location: string | null;
-  status: string | null;
-  school_id: string;
-};
-
-type ListingImage = {
-  id: string;
-  image_url: string;
-  sort_order: number;
-};
-
-export default function ListingPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function ListingPage({ params }: { params: any }) {
   const supabase = createClient();
 
-  const [item, setItem] = useState<Listing | null>(null);
-  const [images, setImages] = useState<ListingImage[]>([]);
+  const [item, setItem] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadData() {
+    async function load() {
       const { id } = await params;
 
-      const { data: listingData } = await supabase
+      const { data } = await supabase
         .from("listings")
         .select("*")
         .eq("id", id)
         .single();
 
-      if (!listingData) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: imageData } = await supabase
-        .from("listing_images")
-        .select("*")
-        .eq("listing_id", id)
-        .order("sort_order", { ascending: true });
-
-      const finalImages = imageData ?? [];
-
-      setItem(listingData);
-      setImages(finalImages);
-      setSelectedImage(
-        finalImages[0]?.image_url ?? listingData.image_url ?? null
-      );
+      setItem(data);
+      setSelectedImage(data?.image_url ?? null);
       setLoading(false);
     }
 
-    loadData();
+    load();
   }, [params]);
 
-  async function handleBuy(listingId: string) {
+  async function handleBuy() {
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
-      body: JSON.stringify({ listingId }),
+      body: JSON.stringify({ listingId: item.id }),
     });
 
     const data = await res.json();
-
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      alert(data.error || "Checkout failed");
-    }
+    if (data.url) window.location.href = data.url;
   }
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-        <div className="max-w-4xl mx-auto bg-white border rounded-2xl p-6">
-          <p>Loading...</p>
-        </div>
-      </main>
-    );
-  }
+  if (loading) return <p className="p-6">Loading...</p>;
 
-  if (!item) {
-    return (
-      <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-        <div className="max-w-4xl mx-auto bg-white border rounded-2xl p-6">
-          <h1 className="text-2xl font-bold">Listing not found</h1>
-          <Link
-            href="/browse"
-            className="inline-block mt-6 border px-4 py-2 rounded-xl"
-          >
-            Back
-          </Link>
-        </div>
-      </main>
-    );
-  }
+  if (!item) return <p className="p-6">Listing not found</p>;
 
   return (
     <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-      <div className="max-w-4xl mx-auto bg-white border rounded-2xl p-6">
-        {/* MAIN IMAGE */}
-        {selectedImage ? (
-          <img
-            src={selectedImage}
-            alt={item.title}
-            className="w-full h-80 object-contain rounded-xl mb-4 bg-gray-100"
-          />
-        ) : (
-          <div className="w-full h-80 bg-gray-100 rounded-xl mb-4" />
-        )}
+      <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8 bg-white p-6 rounded-3xl shadow-xl">
 
-        {/* THUMBNAILS */}
-        {images.length > 1 && (
-          <div className="flex gap-3 overflow-x-auto mb-6">
-            {images.map((img) => (
-              <button
-                key={img.id}
-                onClick={() => setSelectedImage(img.image_url)}
-                className={`border rounded-lg p-1 ${
-                  selectedImage === img.image_url
-                    ? "border-black"
-                    : "border-gray-300"
-                }`}
-              >
-                <img
-                  src={img.image_url}
-                  alt="Listing thumbnail"
-                  className="h-20 w-20 object-contain rounded bg-gray-100"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* TITLE + PRICE */}
-        <div className="flex justify-between">
-          <h1 className="text-2xl font-bold">{item.title}</h1>
-          <span className="text-xl font-bold">
-            ${((item.price_cents ?? 0) / 100).toFixed(2)}
-          </span>
+        {/* IMAGE */}
+        <div>
+          {selectedImage ? (
+            <img
+              src={selectedImage}
+              className="w-full h-96 object-contain bg-gray-100 rounded-2xl"
+            />
+          ) : (
+            <div className="h-96 bg-gray-100 rounded-2xl" />
+          )}
         </div>
 
         {/* DETAILS */}
-        <p className="mt-2 text-gray-600">
-          {item.category ?? "Uncategorized"}
-          {item.condition ? ` • ${item.condition}` : ""}
-        </p>
+        <div className="flex flex-col justify-between">
+          <div>
+            <p className="text-sm text-gray-500">
+              {item.category || "Other"}
+            </p>
 
-        {item.location && (
-          <p className="mt-2 text-sm text-gray-600">
-            Pickup: {item.location}
-          </p>
-        )}
+            <h1 className="text-3xl font-bold mt-1">{item.title}</h1>
 
-        {item.description && (
-          <p className="mt-4 text-gray-700">{item.description}</p>
-        )}
+            <p className="text-2xl font-bold mt-3">
+              ${(item.price_cents / 100).toFixed(2)}
+            </p>
 
-        {/* 🔥 BUY BUTTON */}
-        <button
-          onClick={() => handleBuy(item.id)}
-          className="bg-black text-white px-4 py-3 rounded-xl mt-6 w-full font-medium"
-        >
-          Buy Now
-        </button>
+            {item.description && (
+              <p className="mt-4 text-gray-600">
+                {item.description}
+              </p>
+            )}
+          </div>
 
-        {/* BACK */}
-        <Link
-          href="/browse"
-          className="inline-block mt-4 border px-4 py-2 rounded-xl"
-        >
-          Back
-        </Link>
+          <div className="mt-6 space-y-3">
+            <button
+              onClick={handleBuy}
+              className="w-full bg-black text-white py-3 rounded-xl font-medium hover:shadow-lg"
+            >
+              Buy Now
+            </button>
+
+            <Link
+              href="/browse"
+              className="block text-center border py-3 rounded-xl"
+            >
+              Back to browse
+            </Link>
+          </div>
+        </div>
       </div>
     </main>
   );

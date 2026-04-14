@@ -28,210 +28,96 @@ export default function ListPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const imagePreview = useMemo(() => {
-    if (!imageFile) return null;
-    return URL.createObjectURL(imageFile);
-  }, [imageFile]);
+  const preview = useMemo(() => imageFile ? URL.createObjectURL(imageFile) : null, [imageFile]);
 
-  const canSubmit =
-    title.trim().length > 0 &&
-    description.trim().length > 0 &&
-    price.trim().length > 0 &&
-    Number(price) > 0 &&
-    category.trim().length > 0 &&
-    !!imageFile &&
-    !submitting;
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e:any){
     e.preventDefault();
-
-    if (
-      !title.trim() ||
-      !description.trim() ||
-      !price.trim() ||
-      !category.trim() ||
-      !imageFile
-    ) {
-      alert("Fill out every field and add a picture.");
-      return;
-    }
-
-    const numericPrice = Number(price);
-
-    if (Number.isNaN(numericPrice) || numericPrice <= 0) {
-      alert("Enter a valid price.");
-      return;
-    }
-
     setSubmitting(true);
 
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        alert("You need to log in first.");
-        setSubmitting(false);
-        router.push("/login?next=/list");
-        return;
-      }
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("school_id")
+      .eq("id", user?.id)
+      .single();
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", user.id)
-        .single();
+    const filePath = `${user?.id}/${Date.now()}.jpg`;
 
-      if (profileError || !profile?.school_id) {
-        throw new Error("Could not find your school profile.");
-      }
+    await supabase.storage.from("listings_images").upload(filePath, imageFile!);
 
-      const fileExt = imageFile.name.split(".").pop() || "jpg";
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+    const { data: urlData } = supabase.storage
+      .from("listings_images")
+      .getPublicUrl(filePath);
 
-      const { error: uploadError } = await supabase.storage
-        .from("listings_images")
-        .upload(filePath, imageFile, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+    const { data: listing } = await supabase
+      .from("listings")
+      .insert({
+        title,
+        description,
+        category,
+        price_cents: Number(price)*100,
+        image_url: urlData.publicUrl,
+        seller_id: user?.id,
+        school_id: profile?.school_id,
+        status: "active",
+      })
+      .select("id")
+      .single();
 
-      if (uploadError) {
-        throw new Error(uploadError.message);
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("listings_images")
-        .getPublicUrl(filePath);
-
-      const imageUrl = publicUrlData.publicUrl;
-
-      const { data: listing, error: insertError } = await supabase
-        .from("listings")
-        .insert({
-          title: title.trim(),
-          description: description.trim(),
-          category: category.trim(),
-          price_cents: Math.round(numericPrice * 100),
-          image_url: imageUrl,
-          seller_id: user.id,
-          school_id: profile.school_id,
-          status: "active",
-        })
-        .select("id")
-        .single();
-
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
-
-      router.push(`/listing/${listing.id}`);
-      router.refresh();
-    } catch (err: any) {
-      alert(err.message || "Could not create listing.");
-      setSubmitting(false);
-    }
+    router.push(`/listing/${listing.id}`);
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-      <div className="mx-auto max-w-3xl rounded-2xl border bg-white p-6 shadow-sm">
+    <main className="min-h-screen -mx-6 -my-6 p-6 bg-gray-50">
+      <div className="max-w-3xl mx-auto bg-white p-6 rounded-3xl shadow-xl space-y-5">
+
         <h1 className="text-2xl font-bold">Create Listing</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Post an item for students at your school.
-        </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div>
-            <label className="block text-sm font-medium">Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Mini fridge"
-              className="mt-1 w-full rounded-xl border px-4 py-3"
-              required
-            />
-          </div>
+        <input
+          placeholder="Title"
+          className="w-full border px-4 py-3 rounded-xl"
+          value={title}
+          onChange={(e)=>setTitle(e.target.value)}
+        />
 
-          <div>
-            <label className="block text-sm font-medium">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the item, condition, pickup details, etc."
-              className="mt-1 min-h-[140px] w-full rounded-xl border px-4 py-3"
-              required
-            />
-          </div>
+        <textarea
+          placeholder="Description"
+          className="w-full border px-4 py-3 rounded-xl"
+          value={description}
+          onChange={(e)=>setDescription(e.target.value)}
+        />
 
-          <div>
-            <label className="block text-sm font-medium">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="mt-1 w-full rounded-xl border px-4 py-3"
-              required
-            >
-              <option value="">Select a category</option>
-              {CATEGORIES.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </div>
+        <select
+          className="w-full border px-4 py-3 rounded-xl"
+          value={category}
+          onChange={(e)=>setCategory(e.target.value)}
+        >
+          <option>Select category</option>
+          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        </select>
 
-          <div>
-            <label className="block text-sm font-medium">Price ($)</label>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="25.00"
-              className="mt-1 w-full rounded-xl border px-4 py-3"
-              required
-            />
-          </div>
+        <input
+          type="number"
+          placeholder="Price"
+          className="w-full border px-4 py-3 rounded-xl"
+          value={price}
+          onChange={(e)=>setPrice(e.target.value)}
+        />
 
-          <div>
-            <label className="block text-sm font-medium">
-              Item Picture <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-              className="mt-1 w-full rounded-xl border px-4 py-3"
-              required
-            />
-            <p className="mt-2 text-xs text-gray-500">
-              A picture is required before the item can be posted.
-            </p>
+        <input
+          type="file"
+          onChange={(e)=>setImageFile(e.target.files?.[0] ?? null)}
+        />
 
-            {imagePreview && (
-              <div className="mt-4">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="h-56 w-full rounded-xl border bg-gray-100 object-contain"
-                />
-              </div>
-            )}
-          </div>
+        {preview && <img src={preview} className="h-60 object-contain"/>}
 
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="w-full rounded-xl bg-black py-3 font-medium text-white disabled:opacity-50"
-          >
-            {submitting ? "Posting..." : "Post Listing"}
-          </button>
-        </form>
+        <button
+          onClick={handleSubmit}
+          className="w-full bg-black text-white py-3 rounded-xl"
+        >
+          {submitting ? "Posting..." : "Post Listing"}
+        </button>
       </div>
     </main>
   );
