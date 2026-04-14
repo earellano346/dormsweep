@@ -1,17 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
-  const [signingUp, setSigningUp] = useState(false);
+
+  const message = searchParams.get("message");
 
   async function syncSchool() {
     const response = await fetch("/auth/sync-school", {
@@ -25,33 +28,6 @@ export default function LoginPage() {
     }
 
     return data;
-  }
-
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
-    setSigningUp(true);
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    if (!normalizedEmail.endsWith(".edu")) {
-      setSigningUp(false);
-      alert("You must use a .edu email address.");
-      return;
-    }
-
-    const { error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-    });
-
-    setSigningUp(false);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    alert("Check your email to confirm your account.");
   }
 
   async function handleSignIn(e: React.FormEvent) {
@@ -95,22 +71,29 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-      <div className="mx-auto max-w-md rounded-2xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">DormSweep Login</h1>
+    <main className="min-h-screen -mx-6 -my-6 p-6">
+      <div className="mx-auto max-w-md rounded-3xl bg-white p-6 shadow-xl">
+        <h1 className="text-3xl font-bold">Log In</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Sign up or sign in with your school email.
+          Access DormSweep with your verified school email.
         </p>
 
-        <form className="mt-5 space-y-4">
+        {message && (
+          <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+            {message}
+          </div>
+        )}
+
+        <form onSubmit={handleSignIn} className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium">Email</label>
+            <label className="block text-sm font-medium">School Email</label>
             <input
               type="email"
               className="mt-1 w-full rounded-xl border px-4 py-3"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@school.edu"
+              required
             />
           </div>
 
@@ -122,27 +105,28 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
+              required
             />
           </div>
 
           <button
-            type="button"
-            onClick={handleSignIn}
-            disabled={signingIn || signingUp}
+            type="submit"
+            disabled={signingIn}
             className="w-full rounded-xl bg-black py-3 font-medium text-white disabled:opacity-50"
           >
-            {signingIn ? "Signing In..." : "Sign In"}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSignUp}
-            disabled={signingIn || signingUp}
-            className="w-full rounded-xl border py-3 font-medium disabled:opacity-50"
-          >
-            {signingUp ? "Creating Account..." : "Create Account"}
+            {signingIn ? "Signing In..." : "Log In"}
           </button>
         </form>
+
+        <div className="mt-6 rounded-2xl border bg-gray-50 p-4 text-center">
+          <p className="text-sm text-gray-600">Don’t have an account yet?</p>
+          <Link
+            href="/signup"
+            className="mt-3 inline-block rounded-xl border px-4 py-2 font-medium hover:bg-gray-100"
+          >
+            Sign Up
+          </Link>
+        </div>
       </div>
     </main>
   );
