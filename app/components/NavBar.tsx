@@ -12,8 +12,10 @@ export default async function NavBar() {
   const isLoggedIn = !!user;
 
   return (
-    <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-md">
+    <nav className="border-b border-white/10 bg-black text-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+
+        {/* LOGO */}
         <Link href="/" className="inline-flex items-center">
           <Image
             src="/logo.png"
@@ -24,29 +26,33 @@ export default async function NavBar() {
           />
         </Link>
 
-        <div className="flex items-center gap-5 text-sm font-medium text-gray-700">
-          <Link href="/" className="hover:text-black">
+        {/* NAV LINKS */}
+        <div className="flex items-center gap-5 text-sm font-medium">
+
+          <Link href="/" className="text-white hover:text-gray-300">
             Home
           </Link>
-          <Link href="/browse" className="hover:text-black">
+
+          <Link href="/browse" className="text-white hover:text-gray-300">
             Browse
           </Link>
-          <Link href="/list" className="hover:text-black">
+
+          <Link href="/list" className="text-white hover:text-gray-300">
             List
           </Link>
 
           {isLoggedIn ? (
             <>
-              <Link href="/profile" className="hover:text-black">
+              <Link href="/profile" className="text-white hover:text-gray-300">
                 Profile
               </Link>
 
-              <span className="hidden text-gray-500 md:inline">
+              <span className="hidden text-gray-400 md:inline">
                 {user.email}
               </span>
 
               <form action="/auth/signout" method="post">
-                <button className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50">
+                <button className="rounded-lg border border-white/20 px-3 py-1.5 hover:bg-white/10">
                   Log out
                 </button>
               </form>
@@ -54,11 +60,12 @@ export default async function NavBar() {
           ) : (
             <Link
               href="/login"
-              className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+              className="rounded-lg border border-white/20 px-3 py-1.5 hover:bg-white/10"
             >
               Log in
             </Link>
           )}
+
         </div>
       </div>
     </nav>
