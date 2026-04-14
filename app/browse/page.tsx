@@ -4,10 +4,27 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+const CATEGORIES = [
+  "All",
+  "Books",
+  "Clothes",
+  "Electronics",
+  "Furniture",
+  "Dorm Essentials",
+  "School Supplies",
+  "Kitchen",
+  "Decor",
+  "Sports & Fitness",
+  "Other",
+];
+
 export default function BrowsePage() {
   const supabase = createClient();
+
   const [listings, setListings] = useState<any[]>([]);
+  const [filtered, setFiltered] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   useEffect(() => {
     async function load() {
@@ -17,78 +34,144 @@ export default function BrowsePage() {
 
       if (!user) {
         setListings([]);
+        setFiltered([]);
         setLoading(false);
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("school_id")
         .eq("id", user.id)
         .single();
 
-      if (profileError || !profile?.school_id) {
-        console.error(profileError?.message || "No school found");
+      if (!profile?.school_id) {
         setListings([]);
+        setFiltered([]);
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("listings")
         .select("*")
         .eq("status", "active")
         .eq("school_id", profile.school_id)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error(error.message);
-        setListings([]);
-      } else {
-        setListings(data ?? []);
-      }
+      const items = data ?? [];
 
+      setListings(items);
+      setFiltered(items);
       setLoading(false);
     }
 
     load();
   }, []);
 
+  // filter logic
+  useEffect(() => {
+    if (selectedCategory === "All") {
+      setFiltered(listings);
+    } else {
+      setFiltered(
+        listings.filter((item) => item.category === selectedCategory)
+      );
+    }
+  }, [selectedCategory, listings]);
+
   return (
-    <main className="min-h-screen bg-gray-50 -mx-6 -my-6 p-6">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold">Browse Items</h1>
+    <main className="min-h-screen -mx-6 -my-6 p-6 bg-gray-50">
+      <div className="mx-auto max-w-6xl space-y-8">
 
-        {loading ? (
-          <p className="mt-6 text-sm text-gray-600">Loading...</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-            {listings.map((item) => (
-              <Link
-                key={item.id}
-                href={`/listing/${item.id}`}
-                className="border rounded-xl p-4 bg-white"
+        {/* HEADER */}
+        <section className="rounded-3xl border bg-white/80 p-6 shadow-xl backdrop-blur-md">
+          <h1 className="text-3xl font-bold">Browse your campus</h1>
+          <p className="mt-1 text-gray-600">
+            Find items students at your school are selling.
+          </p>
+
+          {/* CATEGORY FILTERS */}
+          <div className="mt-5 flex flex-wrap gap-2">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 rounded-full text-sm border transition
+                  ${
+                    selectedCategory === cat
+                      ? "bg-black text-white"
+                      : "bg-white hover:shadow"
+                  }`}
               >
-                {item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={item.title}
-                    className="h-40 w-full object-contain rounded-lg mb-3 bg-gray-100"
-                  />
-                ) : (
-                  <div className="h-40 bg-gray-100 rounded-lg mb-3" />
-                )}
-
-                <div className="flex justify-between">
-                  <span className="font-semibold">{item.title}</span>
-                  <span className="font-bold">
-                    ${((item.price_cents ?? 0) / 100).toFixed(2)}
-                  </span>
-                </div>
-              </Link>
+                {cat}
+              </button>
             ))}
           </div>
-        )}
+        </section>
+
+        {/* CONTENT */}
+        <section className="rounded-3xl border bg-white/80 p-6 shadow-xl backdrop-blur-md">
+
+          {loading ? (
+            <p className="text-gray-500">Loading listings...</p>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-xl font-semibold">No listings found</p>
+              <p className="text-gray-500 mt-2">
+                Try another category or be the first to post.
+              </p>
+
+              <Link
+                href="/list"
+                className="inline-block mt-4 bg-black text-white px-5 py-3 rounded-xl"
+              >
+                Create Listing
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filtered.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/listing/${item.id}`}
+                  className="group rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                >
+                  {/* IMAGE */}
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="h-44 w-full object-contain rounded-xl bg-gray-100 mb-3"
+                    />
+                  ) : (
+                    <div className="h-44 bg-gray-100 rounded-xl mb-3" />
+                  )}
+
+                  {/* CATEGORY */}
+                  <span className="text-xs text-gray-500">
+                    {item.category || "Other"}
+                  </span>
+
+                  {/* TITLE + PRICE */}
+                  <div className="flex justify-between items-start mt-1">
+                    <span className="font-semibold line-clamp-2">
+                      {item.title}
+                    </span>
+
+                    <span className="font-bold">
+                      ${(item.price_cents / 100).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-xs text-gray-400">
+                    Tap to view
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
