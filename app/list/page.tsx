@@ -47,13 +47,13 @@ export default function ListPage() {
   const [category, setCategory] = useState("");
   const [pickupLocation, setPickupLocation] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const preview = useMemo(() => {
-    return imageFile ? URL.createObjectURL(imageFile) : null;
-  }, [imageFile]);
+  const previews = useMemo(() => {
+    return imageFiles.map((file) => URL.createObjectURL(file));
+  }, [imageFiles]);
 
   const canSubmit =
     title.trim().length > 0 &&
@@ -64,7 +64,7 @@ export default function ListPage() {
     category.trim().length > 0 &&
     pickupLocation.trim().length > 0 &&
     phoneNumber.replace(/\D/g, "").length === 10 &&
-    !!imageFile &&
+    imageFiles.length > 0 &&
     !submitting;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -73,7 +73,7 @@ export default function ListPage() {
 
     if (!canSubmit) {
       setErrorMessage(
-        "Fill out every field, including condition, pickup location, phone number, price, and picture."
+        "Fill out every field, including condition, pickup location, phone number, price, and at least one picture."
       );
       return;
     }
@@ -107,29 +107,36 @@ export default function ListPage() {
         throw new Error("Enter a valid 10-digit phone number.");
       }
 
-      if (!imageFile) {
-        throw new Error("Please upload an image.");
+      if (imageFiles.length === 0) {
+        throw new Error("Please upload at least one image.");
       }
 
-      const fileExt = imageFile.name.split(".").pop() || "jpg";
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      const uploadedUrls: string[] = [];
 
-      const { error: uploadError } = await supabase.storage
-        .from("listings_images")
-        .upload(filePath, imageFile, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const fileExt = file.name.split(".").pop() || "jpg";
+        const filePath = `${user.id}/${Date.now()}-${i}.${fileExt}`;
 
-      if (uploadError) {
-        throw new Error(uploadError.message);
+        const { error: uploadError } = await supabase.storage
+          .from("listings_images")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("listings_images")
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(urlData.publicUrl);
       }
 
-      const { data: urlData } = supabase.storage
-        .from("listings_images")
-        .getPublicUrl(filePath);
-
-      const imageUrl = urlData.publicUrl;
+      const coverImageUrl = uploadedUrls[0];
 
       const { data: listing, error: insertError } = await supabase
         .from("listings")
@@ -139,7 +146,7 @@ export default function ListPage() {
           condition: condition.trim(),
           category: category.trim(),
           price_cents: Math.round(Number(price) * 100),
-          image_url: imageUrl,
+          image_url: coverImageUrl,
           seller_id: user.id,
           school_id: profile.school_id,
           pickup_location: pickupLocation.trim(),
@@ -151,6 +158,20 @@ export default function ListPage() {
 
       if (insertError || !listing) {
         throw new Error(insertError?.message || "Could not create listing.");
+      }
+
+      const imageRows = uploadedUrls.map((url, index) => ({
+        listing_id: listing.id,
+        image_url: url,
+        sort_order: index,
+      }));
+
+      const { error: imagesInsertError } = await supabase
+        .from("listing_images")
+        .insert(imageRows);
+
+      if (imagesInsertError) {
+        throw new Error(imagesInsertError.message);
       }
 
       router.push(`/listing/${listing.id}`);
@@ -259,27 +280,37 @@ export default function ListPage() {
 
             <div>
               <label className="block text-sm font-medium">
-                Item Picture <span className="text-red-500">*</span>
+                Pictures <span className="text-red-500">*</span>
               </label>
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 className="mt-1 w-full rounded-xl border px-4 py-3"
-                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => setImageFiles(Array.from(e.target.files ?? []))}
                 required
               />
               <p className="mt-2 text-xs text-gray-500">
-                A picture is required before posting.
+                You can upload multiple pictures. The first one will be the cover image.
               </p>
             </div>
 
-            {preview && (
-              <div className="rounded-2xl border bg-gray-50 p-4">
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="h-60 w-full object-contain rounded-xl"
-                />
+            {previews.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {previews.map((src, index) => (
+                  <div key={index} className="rounded-2xl border bg-gray-50 p-3">
+                    <img
+                      src={src}
+                      alt={`Preview ${index + 1}`}
+                      className="h-40 w-full rounded-xl object-contain"
+                    />
+                    {index === 0 && (
+                      <p className="mt-2 text-center text-xs font-medium text-gray-600">
+                        Cover image
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </section>
