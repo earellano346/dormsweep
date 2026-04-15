@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -16,6 +16,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const passwordsMatch =
     confirmPassword.length === 0 || password === confirmPassword;
@@ -32,43 +33,44 @@ export default function SignUpPage() {
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMessage("");
     setCreating(true);
 
     const normalizedEmail = email.toLowerCase().trim();
 
     if (!fullName.trim()) {
       setCreating(false);
-      alert("Enter your full name.");
+      setErrorMessage("Enter your full name.");
       return;
     }
 
     if (!normalizedEmail.endsWith(".edu")) {
       setCreating(false);
-      alert("You must use a .edu email address.");
+      setErrorMessage("You must use a .edu email address.");
       return;
     }
 
     if (!phoneNumber.trim()) {
       setCreating(false);
-      alert("Enter your phone number.");
+      setErrorMessage("Enter your phone number.");
       return;
     }
 
     if (password.length < 6) {
       setCreating(false);
-      alert("Password must be at least 6 characters.");
+      setErrorMessage("Password must be at least 6 characters.");
       return;
     }
 
     if (password !== confirmPassword) {
       setCreating(false);
-      alert("Passwords do not match.");
+      setErrorMessage("Passwords do not match.");
       return;
     }
 
     if (!accepted) {
       setCreating(false);
-      alert("You must accept the Terms and Privacy Policy.");
+      setErrorMessage("You must accept the Terms and Privacy Policy.");
       return;
     }
 
@@ -86,7 +88,7 @@ export default function SignUpPage() {
     setCreating(false);
 
     if (error) {
-      alert(error.message);
+      setErrorMessage(error.message);
       return;
     }
 
@@ -103,6 +105,12 @@ export default function SignUpPage() {
         <p className="mt-2 text-sm text-gray-600">
           Sign up with your school email to join DormSweep.
         </p>
+
+        {errorMessage && (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSignUp} className="mt-6 space-y-4">
           <div>

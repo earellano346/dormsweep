@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
   const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -36,13 +37,20 @@ export default function LoginPage() {
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMessage("");
     setSigningIn(true);
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    if (!normalizedEmail || !password.trim()) {
+      setSigningIn(false);
+      setErrorMessage("Please fill out all fields.");
+      return;
+    }
+
     if (!normalizedEmail.endsWith(".edu")) {
       setSigningIn(false);
-      alert("You must use a .edu email address.");
+      setErrorMessage("You must use a .edu email address.");
       return;
     }
 
@@ -53,7 +61,7 @@ export default function LoginPage() {
 
     if (error) {
       setSigningIn(false);
-      alert(error.message);
+      setErrorMessage(error.message);
       return;
     }
 
@@ -61,7 +69,7 @@ export default function LoginPage() {
       await syncSchool();
     } catch (err: any) {
       setSigningIn(false);
-      alert(err.message);
+      setErrorMessage(err.message || "Failed to sync school.");
       return;
     }
 
@@ -85,6 +93,12 @@ export default function LoginPage() {
         {message && (
           <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
             {message}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {errorMessage}
           </div>
         )}
 

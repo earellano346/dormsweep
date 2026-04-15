@@ -38,6 +38,7 @@ export default function ListPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const preview = useMemo(() => {
     return imageFile ? URL.createObjectURL(imageFile) : null;
@@ -57,9 +58,10 @@ export default function ListPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMessage("");
 
     if (!canSubmit) {
-      alert(
+      setErrorMessage(
         "Fill out every field, including condition, pickup location, phone number, price, and picture."
       );
       return;
@@ -74,8 +76,8 @@ export default function ListPage() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        alert("You need to log in first.");
         setSubmitting(false);
+        setErrorMessage("You need to log in first.");
         router.push("/login?next=/list");
         return;
       }
@@ -139,8 +141,8 @@ export default function ListPage() {
       router.push(`/listing/${listing.id}`);
       router.refresh();
     } catch (err: any) {
-      alert(err.message || "Could not create listing.");
       setSubmitting(false);
+      setErrorMessage(err.message || "Could not create listing.");
     }
   }
 
@@ -153,6 +155,12 @@ export default function ListPage() {
             Post your item for students at your school.
           </p>
         </section>
+
+        {errorMessage && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="rounded-3xl bg-white p-6 shadow-xl space-y-5">
