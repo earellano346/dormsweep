@@ -25,6 +25,17 @@ const CONDITIONS = [
   "Used",
 ];
 
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  }
+
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export default function ListPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -52,7 +63,7 @@ export default function ListPage() {
     Number(price) > 0 &&
     category.trim().length > 0 &&
     pickupLocation.trim().length > 0 &&
-    phoneNumber.trim().length > 0 &&
+    phoneNumber.replace(/\D/g, "").length === 10 &&
     !!imageFile &&
     !submitting;
 
@@ -90,6 +101,10 @@ export default function ListPage() {
 
       if (profileError || !profile?.school_id) {
         throw new Error("Could not find your school profile.");
+      }
+
+      if (phoneNumber.replace(/\D/g, "").length !== 10) {
+        throw new Error("Enter a valid 10-digit phone number.");
       }
 
       if (!imageFile) {
@@ -295,10 +310,10 @@ export default function ListPage() {
               <label className="block text-sm font-medium">Phone number</label>
               <input
                 type="tel"
-                placeholder="Ex: (555) 555-5555"
+                placeholder="(555) 555-5555"
                 className="mt-1 w-full rounded-xl border px-4 py-3"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
                 required
               />
             </div>

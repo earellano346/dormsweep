@@ -5,6 +5,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  }
+
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export default function SignUpPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -24,7 +35,7 @@ export default function SignUpPage() {
   const canSubmit =
     fullName.trim().length > 0 &&
     email.trim().length > 0 &&
-    phoneNumber.trim().length > 0 &&
+    phoneNumber.replace(/\D/g, "").length === 10 &&
     password.length >= 6 &&
     confirmPassword.length > 0 &&
     password === confirmPassword &&
@@ -50,9 +61,9 @@ export default function SignUpPage() {
       return;
     }
 
-    if (!phoneNumber.trim()) {
+    if (phoneNumber.replace(/\D/g, "").length !== 10) {
       setCreating(false);
-      setErrorMessage("Enter your phone number.");
+      setErrorMessage("Enter a valid 10-digit phone number.");
       return;
     }
 
@@ -143,7 +154,7 @@ export default function SignUpPage() {
               type="tel"
               className="mt-1 w-full rounded-xl border px-4 py-3"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
               placeholder="(555) 555-5555"
               required
             />
