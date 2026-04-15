@@ -116,7 +116,16 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium">Password</label>
+              <Link
+                href="/forgot-password"
+                className="text-sm text-gray-600 underline hover:text-black"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             <input
               type="password"
               className="mt-1 w-full rounded-xl border px-4 py-3"
@@ -135,6 +144,15 @@ export default function LoginPage() {
             {signingIn ? "Signing In..." : "Log In"}
           </button>
         </form>
+
+        <div className="mt-4 text-center text-sm">
+          <Link
+            href="/resend-verification"
+            className="text-gray-600 underline hover:text-black"
+          >
+            Resend verification email
+          </Link>
+        </div>
 
         <div className="mt-6 rounded-2xl border bg-gray-50 p-4 text-center">
           <p className="text-sm text-gray-600">Don’t have an account yet?</p>
