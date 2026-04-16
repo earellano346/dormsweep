@@ -146,12 +146,30 @@ export default function ListPage() {
 
     const { min, max } = selectedGuidance;
 
+    if (category === "Books" && numericPrice > 60) {
+      if (numericPrice > max * 1.8) {
+        return {
+          tone: "medium" as const,
+          title: "This is much higher than most student book listings",
+          message:
+            "Some textbooks can be expensive depending on the course, edition, or access code. Make sure your price clearly reflects the book’s real value and condition.",
+        };
+      }
+
+      return {
+        tone: "medium" as const,
+        title: "This is higher than a typical book listing",
+        message:
+          "That can still make sense for certain textbooks. Make sure your price reflects the course, edition, and condition so buyers understand why it’s higher.",
+      };
+    }
+
     if (numericPrice > max * 1.4) {
       return {
         tone: "high" as const,
-        title: "This price looks much higher than expected",
+        title: "This price is much higher than typical student listings",
         message:
-          "Students may skip this listing if it feels too close to retail or much higher than similar campus deals.",
+          "You can still post it, but make sure the price clearly reflects the item’s real value, condition, or original cost.",
       };
     }
 
@@ -160,7 +178,7 @@ export default function ListPage() {
         tone: "medium" as const,
         title: "This price is above the usual range",
         message:
-          "You can still post it, but pricing closer to the suggested range may help it sell faster.",
+          "That can still be okay if the item is in strong condition, but pricing closer to the suggested range may help it sell faster.",
       };
     }
 
@@ -188,7 +206,7 @@ export default function ListPage() {
       message:
         "That should feel reasonable to students if the condition and photos match the listing.",
     };
-  }, [selectedGuidance, price, numericPrice]);
+  }, [selectedGuidance, price, numericPrice, category]);
 
   useEffect(() => {
     let mounted = true;
