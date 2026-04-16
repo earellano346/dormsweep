@@ -1,0 +1,162 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ShieldCheck, School, DollarSign, CircleHelp, X } from "lucide-react";
+
+type CardKey = "campus" | "safety" | "pricing" | "how";
+
+const cardData: Record<
+  CardKey,
+  {
+    title: string;
+    short: string;
+    full: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }
+> = {
+  campus: {
+    title: "Campus Only",
+    short:
+      "Only students with verified school emails can access their campus marketplace.",
+    full:
+      "DormSweep is built for college students, not random strangers online. When someone signs up with their school email, they get placed into their campus marketplace so the people buying and selling are actually part of that school community. That makes the whole experience feel more local, faster, and way more reliable than posting on random public apps.",
+    icon: School,
+  },
+  safety: {
+    title: "Safe & Trusted",
+    short:
+      "Buy and sell within your college community with easier, more trusted meetups.",
+    full:
+      "DormSweep keeps things centered around your campus community, which helps make buying and selling feel safer and more comfortable. Instead of dealing with people from anywhere, students are interacting with other verified students from their own school. That makes meetups easier, lowers risk, and helps build trust throughout the platform.",
+    icon: ShieldCheck,
+  },
+  pricing: {
+    title: "Affordable Prices",
+    short:
+      "DormSweep is built to keep student prices fair and lower than retail.",
+    full:
+      "DormSweep is meant to help students save money, not overpay for basic dorm stuff. Since listings come from other students who no longer need their items, buyers can usually find better deals than buying new. To help keep things fair, DormSweep can guide sellers with suggested price ranges and warn them when a price looks too high compared to similar items.",
+    icon: DollarSign,
+  },
+  how: {
+    title: "How It Works",
+    short:
+      "List items, browse your campus, and connect locally without dealing with shipping.",
+    full:
+      "Students can post items they no longer need, browse listings from their own campus, and connect with other students nearby. That means no waiting on shipping, no paying full store prices, and no wasting time searching all over different apps. DormSweep keeps the process simple so students can buy and sell the stuff they actually need for dorm life.",
+    icon: CircleHelp,
+  },
+};
+
+export default function WhyDormSweep() {
+  const [activeCard, setActiveCard] = useState<CardKey | null>(null);
+
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setActiveCard(null);
+      }
+    }
+
+    if (activeCard) {
+      document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", handleEscape);
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [activeCard]);
+
+  return (
+    <>
+      <section className="w-full py-16 sm:py-20">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 sm:mb-10 text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+              Why students use DormSweep
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm sm:text-base text-white/75">
+              Built to keep buying and selling on campus simple, safer, and more
+              affordable.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {(Object.entries(cardData) as [CardKey, (typeof cardData)[CardKey]][]).map(
+              ([key, card]) => {
+                const Icon = card.icon;
+
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setActiveCard(key)}
+                    className="group rounded-3xl border border-white/10 bg-white/8 p-6 text-left shadow-lg backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  >
+                    <div className="mb-4 inline-flex rounded-2xl border border-white/10 bg-white/10 p-3">
+                      <Icon className="h-6 w-6 text-white" />
+                    </div>
+
+                    <h3 className="text-xl font-semibold text-white">
+                      {card.title}
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-6 text-white/75">
+                      {card.short}
+                    </p>
+
+                    <div className="mt-5 text-sm font-medium text-white/90">
+                      Learn more
+                    </div>
+                  </button>
+                );
+              }
+            )}
+          </div>
+        </div>
+      </section>
+
+      {activeCard && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setActiveCard(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl rounded-[2rem] border border-white/10 bg-[#111111] p-6 sm:p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveCard(null)}
+              className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/20"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="pr-12">
+              <div className="mb-5 inline-flex rounded-2xl border border-white/10 bg-white/10 p-3">
+                {(() => {
+                  const Icon = cardData[activeCard].icon;
+                  return <Icon className="h-7 w-7 text-white" />;
+                })()}
+              </div>
+
+              <h3 className="text-2xl sm:text-3xl font-bold text-white">
+                {cardData[activeCard].title}
+              </h3>
+
+              <p className="mt-4 text-base leading-7 text-white/80">
+                {cardData[activeCard].full}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

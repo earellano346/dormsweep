@@ -135,7 +135,6 @@ export async function POST(req: Request) {
       const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`;
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
       const listingUrl = `${siteUrl}/listing/${listingId}`;
-      const browseUrl = `${siteUrl}/browse`;
       const profileUrl = `${siteUrl}/profile`;
 
       const emailShell = ({
@@ -157,7 +156,6 @@ export async function POST(req: Request) {
       }) => `
         <div style="margin:0;padding:32px 16px;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;">
           <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.06);">
-            
             <div style="padding:28px 32px 20px 32px;background:linear-gradient(135deg,#ffffff 0%,#f9fafb 100%);border-bottom:1px solid #e5e7eb;">
               <div style="text-align:center;">
                 <img
@@ -250,7 +248,7 @@ export async function POST(req: Request) {
       `;
 
       if (buyerEmail) {
-        await resend.emails.send({
+        const buyerEmailResult = await resend.emails.send({
           from: process.env.PURCHASE_FROM_EMAIL,
           to: buyerEmail,
           subject: `Your DormSweep purchase: ${itemTitle}`,
@@ -265,10 +263,25 @@ export async function POST(req: Request) {
               "DormSweep receipt and pickup details. Keep this email for your records.",
           }),
         });
+
+        console.log("Buyer email result:", buyerEmailResult);
+
+        if ((buyerEmailResult as any)?.error) {
+          throw new Error(
+            `Buyer email failed: ${JSON.stringify((buyerEmailResult as any).error)}`
+          );
+        }
+      } else {
+        console.warn("No buyer email found for purchase", {
+          listingId,
+          buyerId,
+          customerEmail: session.customer_email,
+          customerDetailsEmail: session.customer_details?.email,
+        });
       }
 
       if (sellerEmail) {
-        await resend.emails.send({
+        const sellerEmailResult = await resend.emails.send({
           from: process.env.PURCHASE_FROM_EMAIL,
           to: sellerEmail,
           subject: `Your listing sold: ${itemTitle}`,
@@ -283,11 +296,25 @@ export async function POST(req: Request) {
               "DormSweep seller notification. You can coordinate with the buyer from your account.",
           }),
         });
+
+        console.log("Seller email result:", sellerEmailResult);
+
+        if ((sellerEmailResult as any)?.error) {
+          throw new Error(
+            `Seller email failed: ${JSON.stringify((sellerEmailResult as any).error)}`
+          );
+        }
+      } else {
+        console.warn("No seller email found for sale", {
+          listingId,
+          sellerId: listingBeforeUpdate.seller_id,
+        });
       }
     }
 
     return NextResponse.json({ received: true });
   } catch (err: any) {
+    console.error("Webhook handler failed:", err);
     return NextResponse.json(
       { error: err.message || "Webhook handler failed" },
       { status: 500 }

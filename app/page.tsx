@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import WhyDormSweep from "@/app/components/WhyDormSweep";
 
 type Listing = {
   id: string;
@@ -102,6 +103,8 @@ export default async function Home() {
             </div>
           </div>
         </section>
+
+        <WhyDormSweep />
 
         {user && (
           <>
