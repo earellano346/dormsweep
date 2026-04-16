@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const REPORT_REASONS = [
@@ -19,10 +20,12 @@ type ListingImage = {
   sort_order: number;
 };
 
-export default function ListingPage({ params }: { params: { id: string } }) {
+export default function ListingPage() {
   const supabase = createClient();
+  const params = useParams();
+  const listingId = typeof params.id === "string" ? params.id : "";
 
-  const [item, setItem] = useState<any>(null);
+  const [item, setItem] = useState<any | null>(undefined);
   const [images, setImages] = useState<ListingImage[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -41,7 +44,7 @@ export default function ListingPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     async function load() {
-      const id = params.id;
+      if (!listingId) return;
 
       const {
         data: { user },
@@ -52,7 +55,7 @@ export default function ListingPage({ params }: { params: { id: string } }) {
       const { data: listingData, error: listingError } = await supabase
         .from("listings")
         .select("*")
-        .eq("id", id)
+        .eq("id", listingId)
         .single();
 
       if (listingError || !listingData) {
@@ -65,7 +68,7 @@ export default function ListingPage({ params }: { params: { id: string } }) {
       const { data: imageData } = await supabase
         .from("listing_images")
         .select("*")
-        .eq("listing_id", id)
+        .eq("listing_id", listingId)
         .order("sort_order", { ascending: true });
 
       const finalImages = imageData ?? [];
@@ -77,25 +80,27 @@ export default function ListingPage({ params }: { params: { id: string } }) {
           .from("favorites")
           .select("id")
           .eq("user_id", user.id)
-          .eq("listing_id", id)
+          .eq("listing_id", listingId)
           .maybeSingle();
 
         setIsFavorited(!!favoriteRow);
+      } else {
+        setIsFavorited(false);
       }
 
       const { count } = await supabase
         .from("favorites")
         .select("*", { count: "exact", head: true })
-        .eq("listing_id", id);
+        .eq("listing_id", listingId);
 
       setFavoriteCount(count ?? 0);
     }
 
     load();
-  }, [params.id, supabase]);
+  }, [listingId, supabase]);
 
   async function refreshFavoriteState() {
-    if (!item?.id) return;
+    if (!listingId) return;
 
     const {
       data: { user },
@@ -106,7 +111,7 @@ export default function ListingPage({ params }: { params: { id: string } }) {
         .from("favorites")
         .select("id")
         .eq("user_id", user.id)
-        .eq("listing_id", item.id)
+        .eq("listing_id", listingId)
         .maybeSingle();
 
       setIsFavorited(!!favoriteRow);
@@ -117,13 +122,13 @@ export default function ListingPage({ params }: { params: { id: string } }) {
     const { count } = await supabase
       .from("favorites")
       .select("*", { count: "exact", head: true })
-      .eq("listing_id", item.id);
+      .eq("listing_id", listingId);
 
     setFavoriteCount(count ?? 0);
   }
 
   async function handleToggleFavorite() {
-    if (!item?.id) return;
+    if (!listingId) return;
 
     setFavoriteLoading(true);
     setFavoriteError("");
@@ -142,13 +147,13 @@ export default function ListingPage({ params }: { params: { id: string } }) {
           .from("favorites")
           .delete()
           .eq("user_id", user.id)
-          .eq("listing_id", item.id);
+          .eq("listing_id", listingId);
 
         if (error) throw new Error(error.message);
       } else {
         const { error } = await supabase.from("favorites").insert({
           user_id: user.id,
-          listing_id: item.id,
+          listing_id: listingId,
         });
 
         if (error) throw new Error(error.message);
@@ -163,6 +168,8 @@ export default function ListingPage({ params }: { params: { id: string } }) {
   }
 
   async function handleBuy() {
+    if (!item?.id) return;
+
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       body: JSON.stringify({ listingId: item.id }),
@@ -192,7 +199,7 @@ export default function ListingPage({ params }: { params: { id: string } }) {
       }
 
       const { error } = await supabase.from("listing_reports").insert({
-        listing_id: item.id,
+        listing_id: listingId,
         reporter_id: user.id,
         reason: reportReason,
         details: reportDetails.trim() || null,
@@ -211,6 +218,10 @@ export default function ListingPage({ params }: { params: { id: string } }) {
     } finally {
       setReportSubmitting(false);
     }
+  }
+
+  if (item === undefined) {
+    return <p className="p-6">Loading...</p>;
   }
 
   if (item === null) {
