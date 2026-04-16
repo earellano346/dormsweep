@@ -19,7 +19,7 @@ const cardData: Record<
     short:
       "Only students with verified school emails can access their campus marketplace.",
     full:
-      "DormSweep is built for college students, not random strangers online. When someone signs up with their school email, they get placed into their campus marketplace so the people buying and selling are actually part of that school community. That makes the whole experience feel more local, faster, and way more reliable than posting on random public apps.",
+      "DormSweep is built for college students, not random strangers online. When someone signs up with their school email, they get placed into their campus marketplace so the people buying and selling are actually part of that school community. That makes the whole experience feel more local, faster, and more reliable than posting on random public apps.",
     icon: School,
   },
   safety: {
@@ -73,84 +73,82 @@ export default function WhyDormSweep() {
 
   return (
     <>
-      <section className="w-full py-16 sm:py-20">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10 text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-              Why students use DormSweep
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm sm:text-base text-white/75">
-              Built to keep buying and selling on campus simple, safer, and more
-              affordable.
-            </p>
-          </div>
+      <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
+        <div className="mb-6 max-w-2xl">
+          <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            Why students use DormSweep
+          </h2>
+          <p className="mt-2 text-sm text-gray-600 md:text-base">
+            Built to keep buying and selling on campus simple, safer, and more
+            affordable.
+          </p>
+        </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {(Object.entries(cardData) as [CardKey, (typeof cardData)[CardKey]][]).map(
-              ([key, card]) => {
-                const Icon = card.icon;
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {(Object.entries(cardData) as [CardKey, (typeof cardData)[CardKey]][]).map(
+            ([key, card]) => {
+              const Icon = card.icon;
 
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setActiveCard(key)}
-                    className="group rounded-3xl border border-white/10 bg-white/8 p-6 text-left shadow-lg backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-white/30"
-                  >
-                    <div className="mb-4 inline-flex rounded-2xl border border-white/10 bg-white/10 p-3">
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveCard(key)}
+                  className="group rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  <div className="mb-4 inline-flex rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                    <Icon className="h-6 w-6 text-gray-800" />
+                  </div>
 
-                    <h3 className="text-xl font-semibold text-white">
-                      {card.title}
-                    </h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {card.title}
+                  </h3>
 
-                    <p className="mt-3 text-sm leading-6 text-white/75">
-                      {card.short}
-                    </p>
+                  <p className="mt-2 text-sm leading-6 text-gray-600">
+                    {card.short}
+                  </p>
 
-                    <div className="mt-5 text-sm font-medium text-white/90">
-                      Learn more
-                    </div>
-                  </button>
-                );
-              }
-            )}
-          </div>
+                  <div className="mt-4 text-sm font-medium text-gray-900">
+                    Learn more
+                  </div>
+                </button>
+              );
+            }
+          )}
         </div>
       </section>
 
       {activeCard && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-white/35 p-4 backdrop-blur-md"
           onClick={() => setActiveCard(null)}
         >
           <div
-            className="relative w-full max-w-3xl rounded-[2rem] border border-white/10 bg-[#111111] p-6 sm:p-8 shadow-2xl"
+            className="relative w-full max-w-3xl rounded-[2rem] border border-white/60 bg-white/75 p-6 shadow-2xl backdrop-blur-xl sm:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setActiveCard(null)}
-              className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/20"
+              className="absolute right-4 top-4 rounded-full border border-gray-200 bg-white/80 p-2 text-gray-800 transition hover:bg-white"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="pr-12">
-              <div className="mb-5 inline-flex rounded-2xl border border-white/10 bg-white/10 p-3">
+              <div className="mb-5 inline-flex rounded-2xl border border-gray-200 bg-white/80 p-3">
                 {(() => {
                   const Icon = cardData[activeCard].icon;
-                  return <Icon className="h-7 w-7 text-white" />;
+                  return <Icon className="h-7 w-7 text-gray-900" />;
                 })()}
               </div>
 
-              <h3 className="text-2xl sm:text-3xl font-bold text-white">
+              <h3 className="text-2xl font-bold text-gray-900 sm:text-3xl">
                 {cardData[activeCard].title}
               </h3>
 
-              <p className="mt-4 text-base leading-7 text-white/80">
+              <p className="mt-4 text-base leading-7 text-gray-700">
                 {cardData[activeCard].full}
               </p>
             </div>
