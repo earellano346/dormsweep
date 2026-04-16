@@ -37,6 +37,13 @@ export async function POST(req: Request) {
     );
   }
 
+  if (!process.env.NEXT_PUBLIC_SITE_URL) {
+    return NextResponse.json(
+      { error: "Missing NEXT_PUBLIC_SITE_URL" },
+      { status: 500 }
+    );
+  }
+
   let event: Stripe.Event;
 
   try {
@@ -120,42 +127,143 @@ export async function POST(req: Request) {
       const pickupLocation = listingBeforeUpdate.pickup_location || "Not provided";
       const itemTitle = listingBeforeUpdate.title || "DormSweep item";
       const itemPrice = ((listingBeforeUpdate.price_cents ?? 0) / 100).toFixed(2);
+      const purchaseDate = new Date().toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+
       const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+      const listingUrl = `${siteUrl}/listing/${listingId}`;
+      const browseUrl = `${siteUrl}/browse`;
+      const profileUrl = `${siteUrl}/profile`;
+
+      const emailShell = ({
+        heading,
+        subheading,
+        badge,
+        bodyHtml,
+        buttonLabel,
+        buttonHref,
+        footerText,
+      }: {
+        heading: string;
+        subheading: string;
+        badge: string;
+        bodyHtml: string;
+        buttonLabel: string;
+        buttonHref: string;
+        footerText: string;
+      }) => `
+        <div style="margin:0;padding:32px 16px;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;">
+          <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.06);">
+            
+            <div style="padding:28px 32px 20px 32px;background:linear-gradient(135deg,#ffffff 0%,#f9fafb 100%);border-bottom:1px solid #e5e7eb;">
+              <div style="text-align:center;">
+                <img
+                  src="${logoUrl}"
+                  alt="DormSweep"
+                  style="height:64px;max-width:220px;object-fit:contain;"
+                />
+              </div>
+
+              <div style="margin-top:18px;text-align:center;">
+                <span style="display:inline-block;padding:6px 12px;border:1px solid #d1fae5;background:#ecfdf5;color:#047857;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.02em;">
+                  ${badge}
+                </span>
+
+                <h1 style="margin:16px 0 8px 0;font-size:30px;line-height:1.2;color:#111827;">
+                  ${heading}
+                </h1>
+
+                <p style="margin:0;color:#6b7280;font-size:15px;line-height:1.6;">
+                  ${subheading}
+                </p>
+              </div>
+            </div>
+
+            <div style="padding:28px 32px;">
+              ${bodyHtml}
+
+              <div style="margin-top:28px;text-align:center;">
+                <a
+                  href="${buttonHref}"
+                  style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:12px;font-weight:700;font-size:14px;"
+                >
+                  ${buttonLabel}
+                </a>
+              </div>
+            </div>
+
+            <div style="padding:18px 32px;border-top:1px solid #e5e7eb;background:#f9fafb;">
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;text-align:center;">
+                ${footerText}
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const buyerBodyHtml = `
+        <div style="display:grid;gap:16px;">
+          <div style="border:1px solid #e5e7eb;border-radius:16px;background:#f9fafb;padding:18px;">
+            <h2 style="margin:0 0 12px 0;font-size:18px;color:#111827;">Order Summary</h2>
+            <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
+            <p style="margin:0 0 8px 0;"><strong>Price:</strong> $${itemPrice}</p>
+            <p style="margin:0;"><strong>Purchased:</strong> ${purchaseDate}</p>
+          </div>
+
+          <div style="border:1px solid #dbeafe;border-radius:16px;background:#eff6ff;padding:18px;">
+            <h2 style="margin:0 0 12px 0;font-size:18px;color:#1d4ed8;">Pickup Details</h2>
+            <p style="margin:0 0 8px 0;"><strong>Pickup location:</strong> ${pickupLocation}</p>
+            <p style="margin:0;"><strong>Seller phone:</strong> ${sellerPhone}</p>
+          </div>
+
+          <div style="border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;padding:18px;">
+            <p style="margin:0;color:#374151;line-height:1.7;">
+              Reach out to the seller to coordinate pickup. For safety, meet in a public place on campus.
+            </p>
+          </div>
+        </div>
+      `;
+
+      const sellerBodyHtml = `
+        <div style="display:grid;gap:16px;">
+          <div style="border:1px solid #e5e7eb;border-radius:16px;background:#f9fafb;padding:18px;">
+            <h2 style="margin:0 0 12px 0;font-size:18px;color:#111827;">Sale Summary</h2>
+            <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
+            <p style="margin:0 0 8px 0;"><strong>Sale price:</strong> $${itemPrice}</p>
+            <p style="margin:0;"><strong>Sold:</strong> ${purchaseDate}</p>
+          </div>
+
+          <div style="border:1px solid #dcfce7;border-radius:16px;background:#f0fdf4;padding:18px;">
+            <h2 style="margin:0 0 12px 0;font-size:18px;color:#15803d;">Buyer Info</h2>
+            <p style="margin:0;"><strong>Buyer email:</strong> ${buyerEmail || "Not available"}</p>
+          </div>
+
+          <div style="border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;padding:18px;">
+            <p style="margin:0;color:#374151;line-height:1.7;">
+              Log in to DormSweep and coordinate pickup with the buyer.
+            </p>
+          </div>
+        </div>
+      `;
 
       if (buyerEmail) {
         await resend.emails.send({
           from: process.env.PURCHASE_FROM_EMAIL,
           to: buyerEmail,
           subject: `Your DormSweep purchase: ${itemTitle}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111;background:#f9fafb;padding:24px;">
-              <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:32px;">
-                <div style="text-align:center;margin-bottom:24px;">
-                  <img src="${logoUrl}" alt="DormSweep" style="height:64px;max-width:220px;object-fit:contain;" />
-                </div>
-
-                <h2 style="margin:0 0 12px 0;font-size:28px;">Purchase Confirmed</h2>
-                <p style="margin:0 0 20px 0;color:#4b5563;">
-                  You successfully swept up <strong>${itemTitle}</strong>.
-                </p>
-
-                <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;">
-                  <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
-                  <p style="margin:0 0 8px 0;"><strong>Price:</strong> $${itemPrice}</p>
-                  <p style="margin:0 0 8px 0;"><strong>Pickup location:</strong> ${pickupLocation}</p>
-                  <p style="margin:0;"><strong>Seller phone:</strong> ${sellerPhone}</p>
-                </div>
-
-                <p style="margin:20px 0 0 0;color:#374151;">
-                  Reach out to the seller to coordinate pickup. Meet in a safe, public place on campus.
-                </p>
-
-                <p style="margin-top:24px;font-size:12px;color:#6b7280;">
-                  DormSweep receipt and pickup details
-                </p>
-              </div>
-            </div>
-          `,
+          html: emailShell({
+            heading: "Purchase Confirmed",
+            subheading: `You successfully swept up ${itemTitle}.`,
+            badge: "PAYMENT SUCCESSFUL",
+            bodyHtml: buyerBodyHtml,
+            buttonLabel: "View Item",
+            buttonHref: listingUrl,
+            footerText:
+              "DormSweep receipt and pickup details. Keep this email for your records.",
+          }),
         });
       }
 
@@ -164,34 +272,16 @@ export async function POST(req: Request) {
           from: process.env.PURCHASE_FROM_EMAIL,
           to: sellerEmail,
           subject: `Your listing sold: ${itemTitle}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111;background:#f9fafb;padding:24px;">
-              <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:32px;">
-                <div style="text-align:center;margin-bottom:24px;">
-                  <img src="${logoUrl}" alt="DormSweep" style="height:64px;max-width:220px;object-fit:contain;" />
-                </div>
-
-                <h2 style="margin:0 0 12px 0;font-size:28px;">Your listing sold</h2>
-                <p style="margin:0 0 20px 0;color:#4b5563;">
-                  Your listing <strong>${itemTitle}</strong> was purchased on DormSweep.
-                </p>
-
-                <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;">
-                  <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
-                  <p style="margin:0 0 8px 0;"><strong>Sale price:</strong> $${itemPrice}</p>
-                  <p style="margin:0;"><strong>Buyer email:</strong> ${buyerEmail || "Not available"}</p>
-                </div>
-
-                <p style="margin:20px 0 0 0;color:#374151;">
-                  Log in to DormSweep and coordinate pickup with the buyer.
-                </p>
-
-                <p style="margin-top:24px;font-size:12px;color:#6b7280;">
-                  DormSweep seller sale notification
-                </p>
-              </div>
-            </div>
-          `,
+          html: emailShell({
+            heading: "Your Listing Sold",
+            subheading: `${itemTitle} was purchased on DormSweep.`,
+            badge: "ITEM SOLD",
+            bodyHtml: sellerBodyHtml,
+            buttonLabel: "Go to Profile",
+            buttonHref: profileUrl,
+            footerText:
+              "DormSweep seller notification. You can coordinate with the buyer from your account.",
+          }),
         });
       }
     }
