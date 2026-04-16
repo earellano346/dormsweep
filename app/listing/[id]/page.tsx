@@ -304,22 +304,35 @@ export default function ListingPage() {
 
             <div className="mt-6 rounded-2xl border bg-gray-50 p-4">
               <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={handleToggleFavorite}
-                  disabled={favoriteLoading}
-                  className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                    isFavorited
-                      ? "border-black bg-black text-white"
-                      : "border-gray-300 bg-white hover:bg-gray-100"
-                  } disabled:opacity-50`}
-                >
-                  {favoriteLoading
-                    ? "Updating..."
-                    : isFavorited
-                    ? "Saved to Favorites"
-                    : "Save to Favorites"}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleToggleFavorite}
+                    disabled={favoriteLoading || isFavorited}
+                    className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                      isFavorited
+                        ? "border-black bg-black text-white"
+                        : "border-gray-300 bg-white hover:bg-gray-100"
+                    } disabled:opacity-50`}
+                  >
+                    {favoriteLoading
+                      ? "Updating..."
+                      : isFavorited
+                      ? "Saved"
+                      : "Save to Favorites"}
+                  </button>
+
+                  {isFavorited && (
+                    <button
+                      type="button"
+                      onClick={handleToggleFavorite}
+                      disabled={favoriteLoading}
+                      className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      {favoriteLoading ? "Updating..." : "Remove from Saved"}
+                    </button>
+                  )}
+                </div>
 
                 <span className="text-sm text-gray-500">
                   {otherPeopleCount === 0

@@ -30,7 +30,6 @@ export default async function Home() {
       .single();
 
     if (profile?.school_id) {
-      // ACTIVE listings
       const { data: active } = await supabase
         .from("listings")
         .select("*")
@@ -41,7 +40,6 @@ export default async function Home() {
 
       featured = (active as Listing[]) ?? [];
 
-      // SOLD listings
       const { data: sold } = await supabase
         .from("listings")
         .select("category")
@@ -61,8 +59,6 @@ export default async function Home() {
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
       <div className="mx-auto max-w-6xl space-y-8">
-
-        {/* HERO */}
         <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
           <div className="max-w-3xl">
             <p className="inline-flex rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-sm">
@@ -107,36 +103,11 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* IF NOT LOGGED IN */}
-        {!user ? (
-          <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
-              <p className="text-2xl font-bold">
-                Log in with your student email to unlock your campus marketplace
-              </p>
-
-              <p className="mt-3 text-gray-600">
-                DormSweep only shows listings from students at your school.
-              </p>
-
-              <div className="mt-6 flex justify-center">
-                <Link
-                  href="/login"
-                  className="rounded-xl bg-black px-5 py-3 font-medium text-white"
-                >
-                  Go to Login
-                </Link>
-              </div>
-            </div>
-          </section>
-        ) : (
+        {user && (
           <>
-            {/* SOLD STATS */}
             {Object.keys(soldStats).length > 0 && (
               <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
-                <h2 className="text-2xl font-bold mb-4">
-                  🔥 Popular on your campus
-                </h2>
+                <h2 className="mb-4 text-2xl font-bold">🔥 Popular on your campus</h2>
 
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                   {Object.entries(soldStats).map(([category, count]) => (
@@ -154,46 +125,37 @@ export default async function Home() {
               </section>
             )}
 
-            {/* TRENDING */}
             <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">
-                  🔥 Trending Listings
-                </h2>
+                <h2 className="text-2xl font-bold">🔥 Trending Listings</h2>
 
-                <Link
-                  href="/browse"
-                  className="text-sm underline"
-                >
+                <Link href="/browse" className="text-sm underline">
                   See all
                 </Link>
               </div>
 
               {featured.length === 0 ? (
-                <p className="mt-6 text-gray-500">
-                  No listings yet.
-                </p>
+                <p className="mt-6 text-gray-500">No listings yet.</p>
               ) : (
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
                   {featured.map((item) => (
                     <Link
                       key={item.id}
                       href={`/listing/${item.id}`}
-                      className="border rounded-xl p-4 hover:shadow-md"
+                      className="rounded-xl border p-4 hover:shadow-md"
                     >
                       {item.image_url && (
                         <img
                           src={item.image_url}
-                          className="h-32 w-full object-contain mb-3"
+                          className="mb-3 h-32 w-full object-contain"
+                          alt={item.title}
                         />
                       )}
 
                       <div className="flex justify-between">
-                        <span className="font-semibold">
-                          {item.title}
-                        </span>
+                        <span className="font-semibold">{item.title}</span>
                         <span className="font-bold">
-                          ${(item.price_cents! / 100).toFixed(2)}
+                          ${((item.price_cents ?? 0) / 100).toFixed(2)}
                         </span>
                       </div>
                     </Link>
