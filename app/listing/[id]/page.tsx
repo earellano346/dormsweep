@@ -227,7 +227,7 @@ export default function ListingPage() {
   if (item === null) {
     return (
       <main className="min-h-screen -mx-6 -my-6 p-6">
-        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-xl text-center">
+        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-8 text-center shadow-xl">
           <h1 className="text-2xl font-bold">Listing not found</h1>
           <p className="mt-2 text-gray-600">
             This listing may have been removed or is no longer available.
@@ -248,9 +248,13 @@ export default function ListingPage() {
       ? Math.max(favoriteCount - 1, 0)
       : favoriteCount;
 
+  const isOwnListing = currentUserId === item.seller_id;
+  const isSold = item.status === "sold";
+  const canBuy = !isOwnListing && !isSold;
+
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
-      <div className="mx-auto max-w-5xl grid gap-8 md:grid-cols-2">
+      <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-2">
         <div className="rounded-3xl bg-white p-6 shadow-xl">
           {selectedImage ? (
             <img
@@ -437,12 +441,33 @@ export default function ListingPage() {
           <div className="mt-6 space-y-3">
             <button
               onClick={handleBuy}
-              className="group relative w-full overflow-hidden rounded-xl bg-black py-3 font-medium text-white hover:shadow-lg"
+              disabled={!canBuy}
+              className={`group relative w-full overflow-hidden rounded-xl py-3 font-medium text-white transition ${
+                canBuy
+                  ? "bg-black hover:shadow-lg"
+                  : "cursor-not-allowed bg-gray-400"
+              }`}
             >
-              <span className="relative z-10">Sweep It Up</span>
-              <span className="pointer-events-none absolute inset-0">
-                <span className="absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 transition-all duration-500 group-hover:left-full group-hover:opacity-100" />
+              <span className="relative z-10">
+                {isOwnListing
+                  ? "Your Listing"
+                  : isSold
+                  ? "Already Swept Up"
+                  : "Sweep It Up"}
               </span>
+
+              {canBuy && (
+                <>
+                  <img
+                    src="/broom.png"
+                    alt="Broom sweep"
+                    className="pointer-events-none absolute -left-24 top-1/2 z-20 h-12 -translate-y-1/2 rotate-[-8deg] opacity-0 transition-all duration-500 group-hover:left-[78%] group-hover:opacity-100"
+                  />
+                  <span className="pointer-events-none absolute inset-0">
+                    <span className="absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-0 transition-all duration-500 group-hover:left-full group-hover:opacity-100" />
+                  </span>
+                </>
+              )}
             </button>
 
             <Link
