@@ -77,9 +77,9 @@ export default async function SuccessPage({
 
         <section className="rounded-3xl bg-white p-8 shadow-xl space-y-5">
           <div>
-            <h2 className="text-xl font-semibold">Pickup & Contact Info</h2>
+            <h2 className="text-xl font-semibold">What happens next</h2>
             <p className="mt-1 text-sm text-gray-500">
-              This information is only shown after the transaction is complete.
+              You can now coordinate pickup directly with the seller using the details below.
             </p>
           </div>
 
@@ -98,26 +98,34 @@ export default async function SuccessPage({
           </div>
 
           <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-            <p className="text-sm text-blue-800">
-              Reach out to the seller to coordinate pickup. Meet in a safe,
-              public spot on campus.
+            <p className="text-sm font-medium text-blue-900">
+              Next step
+            </p>
+            <p className="mt-1 text-sm text-blue-800">
+              Reach out to the seller and choose a safe, public spot on campus for pickup.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-sm text-gray-700">
+              You can also find your sold and purchased items in your profile.
             </p>
           </div>
         </section>
 
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/browse"
+            href="/profile"
             className="rounded-xl bg-black px-5 py-3 font-medium text-white"
           >
-            Back to Browse
+            Go to Profile
           </Link>
 
           <Link
-            href="/profile"
+            href="/browse"
             className="rounded-xl border border-gray-300 bg-white px-5 py-3 font-medium text-gray-900"
           >
-            Go to Profile
+            Back to Browse
           </Link>
         </div>
       </div>

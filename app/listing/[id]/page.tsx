@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -13,6 +13,25 @@ const REPORT_REASONS = [
   "Harassment",
   "Other",
 ];
+
+const PRICE_GUIDANCE: Record<
+  string,
+  {
+    min: number;
+    max: number;
+  }
+> = {
+  Books: { min: 8, max: 45 },
+  Clothes: { min: 5, max: 35 },
+  Electronics: { min: 20, max: 180 },
+  Furniture: { min: 20, max: 140 },
+  "Dorm Essentials": { min: 8, max: 60 },
+  "School Supplies": { min: 3, max: 25 },
+  Kitchen: { min: 8, max: 70 },
+  Decor: { min: 5, max: 40 },
+  "Sports & Fitness": { min: 10, max: 90 },
+  Other: { min: 5, max: 50 },
+};
 
 type ListingImage = {
   id: string;
@@ -39,6 +58,10 @@ function timeAgo(dateString?: string) {
   return new Date(dateString).toLocaleDateString();
 }
 
+function formatDollars(amount: number) {
+  return `$${amount.toFixed(2)}`;
+}
+
 export default function ListingPage() {
   const supabase = createClient();
   const params = useParams();
@@ -49,6 +72,7 @@ export default function ListingPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserSchoolId, setCurrentUserSchoolId] = useState<string | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
@@ -73,6 +97,18 @@ export default function ListingPage() {
       } = await supabase.auth.getUser();
 
       setCurrentUserId(user?.id ?? null);
+
+      if (user) {
+        const { data: currentProfile } = await supabase
+          .from("profiles")
+          .select("school_id")
+          .eq("id", user.id)
+          .single();
+
+        setCurrentUserSchoolId(currentProfile?.school_id ?? null);
+      } else {
+        setCurrentUserSchoolId(null);
+      }
 
       const { data: listingData, error: listingError } = await supabase
         .from("listings")
@@ -265,6 +301,38 @@ export default function ListingPage() {
     }
   }
 
+  const priceContext = useMemo(() => {
+    const category = item?.category || "Other";
+    const guidance = PRICE_GUIDANCE[category] ?? PRICE_GUIDANCE.Other;
+    return guidance;
+  }, [item]);
+
+  const priceSignal = useMemo(() => {
+    if (!item?.price_cents) return null;
+
+    const amount = item.price_cents / 100;
+    const guidance = priceContext;
+
+    if (amount > guidance.max) {
+      return {
+        label: "Above typical range",
+        classes: "border-amber-200 bg-amber-50 text-amber-800",
+      };
+    }
+
+    if (amount < guidance.min) {
+      return {
+        label: "Good value",
+        classes: "border-green-200 bg-green-50 text-green-800",
+      };
+    }
+
+    return {
+      label: "Fair student price",
+      classes: "border-blue-200 bg-blue-50 text-blue-800",
+    };
+  }, [item, priceContext]);
+
   if (item === undefined) {
     return <p className="p-6">Loading...</p>;
   }
@@ -296,6 +364,11 @@ export default function ListingPage() {
   const isOwnListing = currentUserId === item.seller_id;
   const isSold = item.status === "sold";
   const canBuy = !isOwnListing && !isSold;
+
+  const isFromYourCampus =
+    currentUserSchoolId && item.school_id
+      ? currentUserSchoolId === item.school_id
+      : true;
 
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
@@ -341,7 +414,16 @@ export default function ListingPage() {
 
             <h1 className="mt-2 text-3xl font-bold">{item.title}</h1>
 
-            <p className="mt-1 text-sm text-gray-400">
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700">
+                Verified student
+              </span>
+              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700">
+                {isFromYourCampus ? "From your campus" : "Campus-verified seller"}
+              </span>
+            </div>
+
+            <p className="mt-3 text-sm text-gray-400">
               Posted {timeAgo(item.created_at)}
             </p>
 
@@ -352,6 +434,23 @@ export default function ListingPage() {
             <p className="mt-3 text-2xl font-bold">
               ${((item.price_cents ?? 0) / 100).toFixed(2)}
             </p>
+
+            {priceSignal && (
+              <div
+                className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-medium ${priceSignal.classes}`}
+              >
+                {priceSignal.label}
+              </div>
+            )}
+
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm font-medium text-gray-800">
+                Typical campus price
+              </p>
+              <p className="mt-1 text-sm text-gray-600">
+                {formatDollars(priceContext.min)} to {formatDollars(priceContext.max)}
+              </p>
+            </div>
 
             <p className="mt-4 text-gray-600">{item.description}</p>
 
