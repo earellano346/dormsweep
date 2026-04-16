@@ -125,19 +125,19 @@ export default function WhyDormSweep() {
             className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 shadow-2xl backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/55 via-white/25 to-sky-100/25" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/55 via-white/25 to-sky-100/25" />
 
             <button
               type="button"
               onClick={() => setActiveCard(null)}
-              className="absolute right-4 top-4 z-10 rounded-full border border-gray-200/80 bg-white/80 p-2 text-gray-800 transition hover:bg-white"
+              className="absolute right-4 top-4 z-20 rounded-full border border-gray-200/80 bg-white/90 p-2 text-gray-800 transition hover:bg-white"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="relative z-10 p-6 sm:p-8">
-              <div className="pr-12 max-w-2xl">
+              <div className="max-w-2xl pr-12">
                 <div className="mb-5 inline-flex rounded-2xl border border-white/80 bg-white/70 p-3 shadow-sm">
                   {(() => {
                     const Icon = cardData[activeCard].icon;
