@@ -204,13 +204,19 @@ export default function ListingPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to start checkout.");
+        if (data.error?.includes("Seller is not connected")) {
+          throw new Error(
+            "This seller hasn’t finished setting up payments yet. Try another listing for now."
+          );
+        }
+
+        throw new Error(data.error || "Could not start checkout.");
       }
 
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error("No checkout URL returned.");
+        throw new Error("Something went wrong starting checkout.");
       }
     } catch (err: any) {
       setBuyError(err.message || "Something went wrong.");
@@ -483,8 +489,19 @@ export default function ListingPage() {
 
           <div className="mt-6 space-y-3">
             {buyError && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {buyError}
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 space-y-2">
+                <p className="text-sm font-medium text-red-800">
+                  Unable to complete purchase
+                </p>
+
+                <p className="text-sm text-red-700">{buyError}</p>
+
+                <Link
+                  href="/browse"
+                  className="inline-block text-sm font-medium text-black underline"
+                >
+                  Browse other listings
+                </Link>
               </div>
             )}
 
