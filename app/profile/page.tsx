@@ -4,7 +4,6 @@ import Link from "next/link";
 import DeleteListingButton from "../components/DeleteListingButton";
 import ConnectStripeButton from "../components/ConnectStripeButton";
 
-// 🔥 TIME FUNCTION
 function timeAgo(dateString?: string) {
   if (!dateString) return "";
   const now = new Date().getTime();
@@ -129,7 +128,6 @@ export default async function ProfilePage() {
 
                   <p className="text-xs text-gray-500">{item.category}</p>
 
-                  {/* 🆕 TIMESTAMP */}
                   <p className="text-xs text-gray-400">
                     {timeAgo(item.created_at)}
                   </p>
@@ -163,7 +161,6 @@ export default async function ProfilePage() {
 
                   <p className="text-xs text-gray-500">{item.category}</p>
 
-                  {/* 🆕 TIMESTAMP */}
                   <p className="text-xs text-gray-400">
                     {timeAgo(item.created_at)}
                   </p>
@@ -175,13 +172,15 @@ export default async function ProfilePage() {
                     </span>
                   </div>
 
+                  {/* 🔥 FIXED BUTTONS */}
                   <div className="mt-3 flex gap-2">
                     <Link
                       href={`/listing/${item.id}`}
-                      className="flex-1 border px-3 py-2 text-center"
+                      className="flex-1 rounded-xl border px-3 py-2 text-center font-medium hover:bg-gray-100 transition"
                     >
                       View
                     </Link>
+
                     <DeleteListingButton listingId={item.id} />
                   </div>
                 </div>
@@ -207,7 +206,6 @@ export default async function ProfilePage() {
 
                   <p className="text-xs text-gray-500">{item.category}</p>
 
-                  {/* 🆕 SOLD TIMESTAMP */}
                   <p className="text-xs text-gray-400">
                     Sold {timeAgo(item.sold_at)}
                   </p>

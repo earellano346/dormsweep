@@ -99,7 +99,7 @@ export async function POST(req: Request) {
 
       const { data: sellerProfile } = await adminSupabase
         .from("profiles")
-        .select("email, phone_number")
+        .select("email")
         .eq("id", listingBeforeUpdate.seller_id)
         .single();
 
@@ -120,6 +120,7 @@ export async function POST(req: Request) {
       const pickupLocation = listingBeforeUpdate.pickup_location || "Not provided";
       const itemTitle = listingBeforeUpdate.title || "DormSweep item";
       const itemPrice = ((listingBeforeUpdate.price_cents ?? 0) / 100).toFixed(2);
+      const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`;
 
       if (buyerEmail) {
         await resend.emails.send({
@@ -127,19 +128,32 @@ export async function POST(req: Request) {
           to: buyerEmail,
           subject: `Your DormSweep purchase: ${itemTitle}`,
           html: `
-            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
-              <h2>Purchase Confirmed</h2>
-              <p>You successfully swept up <strong>${itemTitle}</strong>.</p>
+            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111;background:#f9fafb;padding:24px;">
+              <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:32px;">
+                <div style="text-align:center;margin-bottom:24px;">
+                  <img src="${logoUrl}" alt="DormSweep" style="height:64px;max-width:220px;object-fit:contain;" />
+                </div>
 
-              <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb">
-                <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
-                <p style="margin:0 0 8px 0;"><strong>Price:</strong> $${itemPrice}</p>
-                <p style="margin:0 0 8px 0;"><strong>Pickup location:</strong> ${pickupLocation}</p>
-                <p style="margin:0;"><strong>Seller phone:</strong> ${sellerPhone}</p>
+                <h2 style="margin:0 0 12px 0;font-size:28px;">Purchase Confirmed</h2>
+                <p style="margin:0 0 20px 0;color:#4b5563;">
+                  You successfully swept up <strong>${itemTitle}</strong>.
+                </p>
+
+                <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;">
+                  <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
+                  <p style="margin:0 0 8px 0;"><strong>Price:</strong> $${itemPrice}</p>
+                  <p style="margin:0 0 8px 0;"><strong>Pickup location:</strong> ${pickupLocation}</p>
+                  <p style="margin:0;"><strong>Seller phone:</strong> ${sellerPhone}</p>
+                </div>
+
+                <p style="margin:20px 0 0 0;color:#374151;">
+                  Reach out to the seller to coordinate pickup. Meet in a safe, public place on campus.
+                </p>
+
+                <p style="margin-top:24px;font-size:12px;color:#6b7280;">
+                  DormSweep receipt and pickup details
+                </p>
               </div>
-
-              <p>Reach out to the seller to coordinate pickup. Meet in a safe, public place on campus.</p>
-              <p style="margin-top:24px;color:#666;font-size:12px;">DormSweep receipt and pickup details</p>
             </div>
           `,
         });
@@ -151,18 +165,31 @@ export async function POST(req: Request) {
           to: sellerEmail,
           subject: `Your listing sold: ${itemTitle}`,
           html: `
-            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
-              <h2>Your listing sold</h2>
-              <p>Your listing <strong>${itemTitle}</strong> was purchased on DormSweep.</p>
+            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111;background:#f9fafb;padding:24px;">
+              <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:32px;">
+                <div style="text-align:center;margin-bottom:24px;">
+                  <img src="${logoUrl}" alt="DormSweep" style="height:64px;max-width:220px;object-fit:contain;" />
+                </div>
 
-              <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb">
-                <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
-                <p style="margin:0 0 8px 0;"><strong>Sale price:</strong> $${itemPrice}</p>
-                <p style="margin:0;"><strong>Buyer email:</strong> ${buyerEmail || "Not available"}</p>
+                <h2 style="margin:0 0 12px 0;font-size:28px;">Your listing sold</h2>
+                <p style="margin:0 0 20px 0;color:#4b5563;">
+                  Your listing <strong>${itemTitle}</strong> was purchased on DormSweep.
+                </p>
+
+                <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;">
+                  <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
+                  <p style="margin:0 0 8px 0;"><strong>Sale price:</strong> $${itemPrice}</p>
+                  <p style="margin:0;"><strong>Buyer email:</strong> ${buyerEmail || "Not available"}</p>
+                </div>
+
+                <p style="margin:20px 0 0 0;color:#374151;">
+                  Log in to DormSweep and coordinate pickup with the buyer.
+                </p>
+
+                <p style="margin-top:24px;font-size:12px;color:#6b7280;">
+                  DormSweep seller sale notification
+                </p>
               </div>
-
-              <p>Log in to DormSweep and coordinate pickup with the buyer.</p>
-              <p style="margin-top:24px;color:#666;font-size:12px;">DormSweep seller sale notification</p>
             </div>
           `,
         });
