@@ -436,10 +436,24 @@ export default function ListingPage() {
             </p>
 
             {priceSignal && (
-              <div
-                className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-medium ${priceSignal.classes}`}
-              >
-                {priceSignal.label}
+              <div className="mt-3 inline-flex items-center gap-2">
+                <div
+                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${priceSignal.classes}`}
+                >
+                  {priceSignal.label}
+                </div>
+
+                <div className="relative group">
+                  <div className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-gray-300 bg-white text-[11px] font-semibold text-gray-600">
+                    i
+                  </div>
+
+                  <div className="pointer-events-none absolute left-1/2 top-7 z-10 w-56 -translate-x-1/2 rounded-xl border border-gray-200 bg-white p-3 text-xs text-gray-700 opacity-0 shadow-lg transition group-hover:opacity-100">
+                    For some items like textbooks or specialty products, higher
+                    prices can still be reasonable depending on the course,
+                    edition, condition, or original cost.
+                  </div>
+                </div>
               </div>
             )}
 
