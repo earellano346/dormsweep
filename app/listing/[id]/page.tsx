@@ -1,5 +1,24 @@
 "use client";
 
+function timeAgo(dateString?: string) {
+  if (!dateString) return "";
+  const now = new Date().getTime();
+  const then = new Date(dateString).getTime();
+  const diff = now - then;
+
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just posted";
+  if (mins < 60) return `${mins}m ago`;
+
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  return new Date(dateString).toLocaleDateString();
+}
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -295,6 +314,10 @@ export default function ListingPage() {
             <p className="text-sm text-gray-500">{item.category || "Other"}</p>
 
             <h1 className="mt-2 text-3xl font-bold">{item.title}</h1>
+
+            <p className="mt-1 text-sm text-gray-400">
+              Posted {timeAgo(item.created_at)}
+            </p>
 
             <p className="mt-1 text-sm text-gray-500">
               Condition: {item.condition || "Not listed"}

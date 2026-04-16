@@ -4,6 +4,26 @@ import Link from "next/link";
 import DeleteListingButton from "../components/DeleteListingButton";
 import ConnectStripeButton from "../components/ConnectStripeButton";
 
+// 🔥 TIME FUNCTION
+function timeAgo(dateString?: string) {
+  if (!dateString) return "";
+  const now = new Date().getTime();
+  const then = new Date(dateString).getTime();
+  const diff = now - then;
+
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  return new Date(dateString).toLocaleDateString();
+}
+
 export default async function ProfilePage() {
   const supabase = await createClient();
 
@@ -22,21 +42,21 @@ export default async function ProfilePage() {
     .eq("id", user.id)
     .single();
 
-  const { data: activeListings, error: activeError } = await supabase
+  const { data: activeListings } = await supabase
     .from("listings")
     .select("*")
     .eq("seller_id", user.id)
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
-  const { data: soldListings, error: soldError } = await supabase
+  const { data: soldListings } = await supabase
     .from("listings")
     .select("*")
     .eq("seller_id", user.id)
     .eq("status", "sold")
     .order("sold_at", { ascending: false });
 
-  const { data: favoriteRows, error: favoritesError } = await supabase
+  const { data: favoriteRows } = await supabase
     .from("favorites")
     .select("listing_id")
     .eq("user_id", user.id);
@@ -46,29 +66,14 @@ export default async function ProfilePage() {
   let favoriteListings: any[] = [];
 
   if (favoriteIds.length > 0) {
-    const { data: favoritesListingsData, error: favoriteListingsError } =
-      await supabase
-        .from("listings")
-        .select("*")
-        .in("id", favoriteIds)
-        .eq("status", "active")
-        .order("created_at", { ascending: false });
+    const { data: favoritesListingsData } = await supabase
+      .from("listings")
+      .select("*")
+      .in("id", favoriteIds)
+      .eq("status", "active")
+      .order("created_at", { ascending: false });
 
-    if (!favoriteListingsError) {
-      favoriteListings = favoritesListingsData ?? [];
-    }
-  }
-
-  if (activeError) {
-    console.error("Error loading active listings:", activeError.message);
-  }
-
-  if (soldError) {
-    console.error("Error loading sold listings:", soldError.message);
-  }
-
-  if (favoritesError) {
-    console.error("Error loading favorites:", favoritesError.message);
+    favoriteListings = favoritesListingsData ?? [];
   }
 
   const hasStripeAccount = !!profile?.stripe_account_id;
@@ -76,6 +81,8 @@ export default async function ProfilePage() {
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
       <div className="mx-auto max-w-6xl space-y-8">
+
+        {/* HEADER */}
         <section className="rounded-3xl bg-white p-6 shadow-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -101,45 +108,36 @@ export default async function ProfilePage() {
           </div>
         </section>
 
+        {/* SAVED LISTINGS */}
         <section className="rounded-3xl bg-white p-6 shadow-xl">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold">Saved Listings</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Listings you’ve saved for later.
-            </p>
-          </div>
+          <h2 className="text-xl font-semibold mb-4">Saved Listings</h2>
 
-          {!favoriteListings || favoriteListings.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-8 text-center">
-              <p className="font-medium text-gray-700">No saved listings yet.</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Save listings to keep track of items you’re interested in.
-              </p>
-            </div>
+          {favoriteListings.length === 0 ? (
+            <p>No saved listings yet.</p>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {favoriteListings.map((item) => (
                 <Link
                   key={item.id}
                   href={`/listing/${item.id}`}
-                  className="rounded-2xl border bg-white p-4 shadow-sm hover:shadow-md"
+                  className="rounded-2xl border p-4"
                 >
-                  {item.image_url ? (
-                    <img
-                      src={item.image_url}
-                      alt={item.title}
-                      className="mb-3 h-40 w-full rounded-xl bg-gray-100 object-contain"
-                    />
-                  ) : (
-                    <div className="mb-3 h-40 rounded-xl bg-gray-100" />
-                  )}
+                  <img
+                    src={item.image_url}
+                    className="mb-3 h-40 w-full object-contain"
+                  />
 
-                  <p className="text-xs text-gray-500">{item.category || "Other"}</p>
+                  <p className="text-xs text-gray-500">{item.category}</p>
 
-                  <div className="mt-1 flex items-start justify-between gap-3">
-                    <span className="font-semibold">{item.title}</span>
-                    <span className="font-bold">
-                      ${((item.price_cents ?? 0) / 100).toFixed(2)}
+                  {/* 🆕 TIMESTAMP */}
+                  <p className="text-xs text-gray-400">
+                    {timeAgo(item.created_at)}
+                  </p>
+
+                  <div className="flex justify-between mt-1">
+                    <span>{item.title}</span>
+                    <span>
+                      ${(item.price_cents / 100).toFixed(2)}
                     </span>
                   </div>
                 </Link>
@@ -148,55 +146,42 @@ export default async function ProfilePage() {
           )}
         </section>
 
+        {/* ACTIVE LISTINGS */}
         <section className="rounded-3xl bg-white p-6 shadow-xl">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold">Active Listings</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Items currently live on your campus marketplace.
-            </p>
-          </div>
+          <h2 className="text-xl font-semibold mb-4">Active Listings</h2>
 
-          {!activeListings || activeListings.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-8 text-center">
-              <p className="font-medium text-gray-700">No active listings.</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Create a listing to start selling.
-              </p>
-            </div>
+          {activeListings?.length === 0 ? (
+            <p>No active listings.</p>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {activeListings.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border bg-white p-4 shadow-sm"
-                >
-                  {item.image_url ? (
-                    <img
-                      src={item.image_url}
-                      alt={item.title}
-                      className="mb-3 h-40 w-full rounded-xl bg-gray-100 object-contain"
-                    />
-                  ) : (
-                    <div className="mb-3 h-40 rounded-xl bg-gray-100" />
-                  )}
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {activeListings?.map((item) => (
+                <div key={item.id} className="rounded-2xl border p-4">
+                  <img
+                    src={item.image_url}
+                    className="mb-3 h-40 w-full object-contain"
+                  />
 
-                  <p className="text-xs text-gray-500">{item.category || "Other"}</p>
+                  <p className="text-xs text-gray-500">{item.category}</p>
 
-                  <div className="mt-1 flex items-start justify-between gap-3">
-                    <span className="font-semibold">{item.title}</span>
-                    <span className="font-bold">
-                      ${((item.price_cents ?? 0) / 100).toFixed(2)}
+                  {/* 🆕 TIMESTAMP */}
+                  <p className="text-xs text-gray-400">
+                    {timeAgo(item.created_at)}
+                  </p>
+
+                  <div className="flex justify-between mt-1">
+                    <span>{item.title}</span>
+                    <span>
+                      ${(item.price_cents / 100).toFixed(2)}
                     </span>
                   </div>
 
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-3 flex gap-2">
                     <Link
                       href={`/listing/${item.id}`}
-                      className="flex-1 rounded-xl border px-3 py-2 text-center text-sm font-medium hover:bg-gray-50"
+                      className="flex-1 border px-3 py-2 text-center"
                     >
                       View
                     </Link>
-
                     <DeleteListingButton listingId={item.id} />
                   </div>
                 </div>
@@ -205,45 +190,36 @@ export default async function ProfilePage() {
           )}
         </section>
 
+        {/* SOLD LISTINGS */}
         <section className="rounded-3xl bg-white p-6 shadow-xl">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold">Sold Items</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Listings that have already been purchased.
-            </p>
-          </div>
+          <h2 className="text-xl font-semibold mb-4">Sold Listings</h2>
 
-          {!soldListings || soldListings.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-8 text-center">
-              <p className="font-medium text-gray-700">No sold items yet.</p>
-            </div>
+          {soldListings?.length === 0 ? (
+            <p>No sold items yet.</p>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {soldListings.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border bg-white p-4 shadow-sm opacity-80"
-                >
-                  {item.image_url ? (
-                    <img
-                      src={item.image_url}
-                      alt={item.title}
-                      className="mb-3 h-40 w-full rounded-xl bg-gray-100 object-contain"
-                    />
-                  ) : (
-                    <div className="mb-3 h-40 rounded-xl bg-gray-100" />
-                  )}
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {soldListings?.map((item) => (
+                <div key={item.id} className="rounded-2xl border p-4 opacity-80">
+                  <img
+                    src={item.image_url}
+                    className="mb-3 h-40 w-full object-contain"
+                  />
 
-                  <p className="text-xs text-gray-500">{item.category || "Other"}</p>
+                  <p className="text-xs text-gray-500">{item.category}</p>
 
-                  <div className="mt-1 flex items-start justify-between gap-3">
-                    <span className="font-semibold">{item.title}</span>
-                    <span className="font-bold">
-                      ${((item.price_cents ?? 0) / 100).toFixed(2)}
+                  {/* 🆕 SOLD TIMESTAMP */}
+                  <p className="text-xs text-gray-400">
+                    Sold {timeAgo(item.sold_at)}
+                  </p>
+
+                  <div className="flex justify-between mt-1">
+                    <span>{item.title}</span>
+                    <span>
+                      ${(item.price_cents / 100).toFixed(2)}
                     </span>
                   </div>
 
-                  <p className="mt-3 text-sm font-medium text-green-600">Sold</p>
+                  <p className="text-green-600 mt-2">Sold</p>
                 </div>
               ))}
             </div>
