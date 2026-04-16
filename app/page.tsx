@@ -20,7 +20,6 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let featured: Listing[] = [];
   let soldStats: Record<string, number> = {};
 
   if (user) {
@@ -31,16 +30,6 @@ export default async function Home() {
       .single();
 
     if (profile?.school_id) {
-      const { data: active } = await supabase
-        .from("listings")
-        .select("*")
-        .eq("status", "active")
-        .eq("school_id", profile.school_id)
-        .order("created_at", { ascending: false })
-        .limit(4);
-
-      featured = (active as Listing[]) ?? [];
-
       const { data: sold } = await supabase
         .from("listings")
         .select("category")
@@ -56,6 +45,10 @@ export default async function Home() {
       }
     }
   }
+
+  const sortedSoldStats = Object.entries(soldStats).sort((a, b) => b[1] - a[1]);
+  const topCategory = sortedSoldStats[0] ?? null;
+  const remainingCategories = sortedSoldStats.slice(1);
 
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
@@ -104,68 +97,52 @@ export default async function Home() {
           </div>
         </section>
 
-        <WhyDormSweep />
+        {!user && <WhyDormSweep />}
 
         {user && (
           <>
-            {Object.keys(soldStats).length > 0 && (
+            {sortedSoldStats.length > 0 && (
               <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
-                <h2 className="mb-4 text-2xl font-bold">🔥 Popular on your campus</h2>
-
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                  {Object.entries(soldStats).map(([category, count]) => (
-                    <div
-                      key={category}
-                      className="rounded-2xl border border-gray-200 bg-white p-4 text-center shadow-sm"
-                    >
-                      <p className="text-2xl font-bold">{count}</p>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {category}: {count} sold
-                      </p>
-                    </div>
-                  ))}
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold">🔥 Popular on your campus</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Based on what students have bought the most.
+                  </p>
                 </div>
+
+                {topCategory && (
+                  <div className="mb-5 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Most Popular Category
+                    </p>
+                    <h3 className="mt-2 text-3xl font-bold text-gray-900">
+                      {topCategory[0]}
+                    </h3>
+                    <p className="mt-2 text-base text-gray-600">
+                      {topCategory[1]} sold
+                    </p>
+                  </div>
+                )}
+
+                {remainingCategories.length > 0 && (
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                    {remainingCategories.map(([category, count]) => (
+                      <div
+                        key={category}
+                        className="rounded-2xl border border-gray-200 bg-white p-4 text-center shadow-sm"
+                      >
+                        <p className="text-sm text-gray-500">{category}</p>
+                        <p className="mt-1 text-2xl font-bold text-gray-900">
+                          {count} sold
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
-            <section className="rounded-3xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur-md">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">🔥 Trending Listings</h2>
-
-                <Link href="/browse" className="text-sm underline">
-                  See all
-                </Link>
-              </div>
-
-              {featured.length === 0 ? (
-                <p className="mt-6 text-gray-500">No listings yet.</p>
-              ) : (
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-                  {featured.map((item) => (
-                    <Link
-                      key={item.id}
-                      href={`/listing/${item.id}`}
-                      className="rounded-xl border p-4 hover:shadow-md"
-                    >
-                      {item.image_url && (
-                        <img
-                          src={item.image_url}
-                          className="mb-3 h-32 w-full object-contain"
-                          alt={item.title}
-                        />
-                      )}
-
-                      <div className="flex justify-between">
-                        <span className="font-semibold">{item.title}</span>
-                        <span className="font-bold">
-                          ${((item.price_cents ?? 0) / 100).toFixed(2)}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </section>
+            <WhyDormSweep />
           </>
         )}
       </div>
