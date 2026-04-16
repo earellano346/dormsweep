@@ -53,9 +53,7 @@ export default function WhyDormSweep() {
 
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setActiveCard(null);
-      }
+      if (e.key === "Escape") setActiveCard(null);
     }
 
     if (activeCard) {
@@ -94,7 +92,7 @@ export default function WhyDormSweep() {
                   key={key}
                   type="button"
                   onClick={() => setActiveCard(key)}
-                  className="group rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  className="group cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:scale-[1.02] hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-300"
                 >
                   <div className="mb-4 inline-flex rounded-2xl border border-gray-200 bg-gray-50 p-3">
                     <Icon className="h-6 w-6 text-gray-800" />
@@ -109,7 +107,7 @@ export default function WhyDormSweep() {
                   </p>
 
                   <div className="mt-4 text-sm font-medium text-gray-900">
-                    Learn more
+                    Click to learn more
                   </div>
                 </button>
               );
@@ -120,37 +118,43 @@ export default function WhyDormSweep() {
 
       {activeCard && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-white/35 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(255,255,255,0.35)] p-4 backdrop-blur-md"
           onClick={() => setActiveCard(null)}
         >
           <div
-            className="relative w-full max-w-3xl rounded-[2rem] border border-white/60 bg-white/75 p-6 shadow-2xl backdrop-blur-xl sm:p-8"
+            className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 shadow-2xl backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="absolute inset-0 bg-gradient-to-br from-white/55 via-white/25 to-sky-100/25" />
+
             <button
               type="button"
               onClick={() => setActiveCard(null)}
-              className="absolute right-4 top-4 rounded-full border border-gray-200 bg-white/80 p-2 text-gray-800 transition hover:bg-white"
+              className="absolute right-4 top-4 z-10 rounded-full border border-gray-200/80 bg-white/80 p-2 text-gray-800 transition hover:bg-white"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <div className="pr-12">
-              <div className="mb-5 inline-flex rounded-2xl border border-gray-200 bg-white/80 p-3">
-                {(() => {
-                  const Icon = cardData[activeCard].icon;
-                  return <Icon className="h-7 w-7 text-gray-900" />;
-                })()}
+            <div className="relative z-10 p-6 sm:p-8">
+              <div className="pr-12 max-w-2xl">
+                <div className="mb-5 inline-flex rounded-2xl border border-white/80 bg-white/70 p-3 shadow-sm">
+                  {(() => {
+                    const Icon = cardData[activeCard].icon;
+                    return <Icon className="h-7 w-7 text-gray-900" />;
+                  })()}
+                </div>
+
+                <h3 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                  {cardData[activeCard].title}
+                </h3>
+
+                <div className="mt-3 h-px w-full bg-gray-200" />
+
+                <p className="mt-4 text-base leading-7 text-gray-700">
+                  {cardData[activeCard].full}
+                </p>
               </div>
-
-              <h3 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-                {cardData[activeCard].title}
-              </h3>
-
-              <p className="mt-4 text-base leading-7 text-gray-700">
-                {cardData[activeCard].full}
-              </p>
             </div>
           </div>
         </div>
