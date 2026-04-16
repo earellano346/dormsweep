@@ -98,10 +98,12 @@ export default async function SuccessPage({
             </p>
           </div>
 
+          {/* UPDATED BLUE BOX */}
           <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
             <p className="text-sm text-blue-800">
               Reach out to the seller to coordinate pickup. Meet in a safe,
-              public spot on campus.
+              public spot on campus. A confirmation email with these details
+              was also sent to your inbox.
             </p>
           </div>
         </section>

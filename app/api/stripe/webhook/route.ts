@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { Resend } from "resend";
 import { stripe } from "@/lib/stripe";
 import { adminSupabase } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -16,6 +19,20 @@ export async function POST(req: Request) {
   if (!process.env.STRIPE_WEBHOOK_SECRET) {
     return NextResponse.json(
       { error: "Missing STRIPE_WEBHOOK_SECRET" },
+      { status: 500 }
+    );
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json(
+      { error: "Missing RESEND_API_KEY" },
+      { status: 500 }
+    );
+  }
+
+  if (!process.env.PURCHASE_FROM_EMAIL) {
+    return NextResponse.json(
+      { error: "Missing PURCHASE_FROM_EMAIL" },
       { status: 500 }
     );
   }
@@ -49,8 +66,21 @@ export async function POST(req: Request) {
         );
       }
 
-      // Mark listing as sold only if it's still active
-      const { error } = await adminSupabase
+      const { data: listingBeforeUpdate, error: listingLookupError } =
+        await adminSupabase
+          .from("listings")
+          .select("*")
+          .eq("id", listingId)
+          .single();
+
+      if (listingLookupError || !listingBeforeUpdate) {
+        return NextResponse.json(
+          { error: "Could not load listing before update" },
+          { status: 500 }
+        );
+      }
+
+      const { error: updateError } = await adminSupabase
         .from("listings")
         .update({
           status: "sold",
@@ -60,11 +90,82 @@ export async function POST(req: Request) {
         .eq("id", listingId)
         .eq("status", "active");
 
-      if (error) {
+      if (updateError) {
         return NextResponse.json(
-          { error: `Failed to mark listing sold: ${error.message}` },
+          { error: `Failed to mark listing sold: ${updateError.message}` },
           { status: 500 }
         );
+      }
+
+      const { data: sellerProfile } = await adminSupabase
+        .from("profiles")
+        .select("email, phone_number")
+        .eq("id", listingBeforeUpdate.seller_id)
+        .single();
+
+      const { data: buyerProfile } = await adminSupabase
+        .from("profiles")
+        .select("email")
+        .eq("id", buyerId)
+        .single();
+
+      const buyerEmail =
+        session.customer_details?.email ||
+        session.customer_email ||
+        buyerProfile?.email ||
+        "";
+
+      const sellerEmail = sellerProfile?.email || "";
+      const sellerPhone = listingBeforeUpdate.phone_number || "Not provided";
+      const pickupLocation = listingBeforeUpdate.pickup_location || "Not provided";
+      const itemTitle = listingBeforeUpdate.title || "DormSweep item";
+      const itemPrice = ((listingBeforeUpdate.price_cents ?? 0) / 100).toFixed(2);
+
+      if (buyerEmail) {
+        await resend.emails.send({
+          from: process.env.PURCHASE_FROM_EMAIL,
+          to: buyerEmail,
+          subject: `Your DormSweep purchase: ${itemTitle}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
+              <h2>Purchase Confirmed</h2>
+              <p>You successfully swept up <strong>${itemTitle}</strong>.</p>
+
+              <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb">
+                <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
+                <p style="margin:0 0 8px 0;"><strong>Price:</strong> $${itemPrice}</p>
+                <p style="margin:0 0 8px 0;"><strong>Pickup location:</strong> ${pickupLocation}</p>
+                <p style="margin:0;"><strong>Seller phone:</strong> ${sellerPhone}</p>
+              </div>
+
+              <p>Reach out to the seller to coordinate pickup. Meet in a safe, public place on campus.</p>
+              <p style="margin-top:24px;color:#666;font-size:12px;">DormSweep receipt and pickup details</p>
+            </div>
+          `,
+        });
+      }
+
+      if (sellerEmail) {
+        await resend.emails.send({
+          from: process.env.PURCHASE_FROM_EMAIL,
+          to: sellerEmail,
+          subject: `Your listing sold: ${itemTitle}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
+              <h2>Your listing sold</h2>
+              <p>Your listing <strong>${itemTitle}</strong> was purchased on DormSweep.</p>
+
+              <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb">
+                <p style="margin:0 0 8px 0;"><strong>Item:</strong> ${itemTitle}</p>
+                <p style="margin:0 0 8px 0;"><strong>Sale price:</strong> $${itemPrice}</p>
+                <p style="margin:0;"><strong>Buyer email:</strong> ${buyerEmail || "Not available"}</p>
+              </div>
+
+              <p>Log in to DormSweep and coordinate pickup with the buyer.</p>
+              <p style="margin-top:24px;color:#666;font-size:12px;">DormSweep seller sale notification</p>
+            </div>
+          `,
+        });
       }
     }
 
