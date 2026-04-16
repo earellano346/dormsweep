@@ -36,12 +36,39 @@ export default async function ProfilePage() {
     .eq("status", "sold")
     .order("sold_at", { ascending: false });
 
+  const { data: favoriteRows, error: favoritesError } = await supabase
+    .from("favorites")
+    .select("listing_id")
+    .eq("user_id", user.id);
+
+  const favoriteIds = (favoriteRows ?? []).map((row) => row.listing_id);
+
+  let favoriteListings: any[] = [];
+
+  if (favoriteIds.length > 0) {
+    const { data: favoritesListingsData, error: favoriteListingsError } =
+      await supabase
+        .from("listings")
+        .select("*")
+        .in("id", favoriteIds)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+    if (!favoriteListingsError) {
+      favoriteListings = favoritesListingsData ?? [];
+    }
+  }
+
   if (activeError) {
     console.error("Error loading active listings:", activeError.message);
   }
 
   if (soldError) {
     console.error("Error loading sold listings:", soldError.message);
+  }
+
+  if (favoritesError) {
+    console.error("Error loading favorites:", favoritesError.message);
   }
 
   const hasStripeAccount = !!profile?.stripe_account_id;
@@ -72,6 +99,53 @@ export default async function ProfilePage() {
               </form>
             </div>
           </div>
+        </section>
+
+        <section className="rounded-3xl bg-white p-6 shadow-xl">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold">Saved Listings</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Listings you’ve saved for later.
+            </p>
+          </div>
+
+          {!favoriteListings || favoriteListings.length === 0 ? (
+            <div className="rounded-2xl border border-dashed p-8 text-center">
+              <p className="font-medium text-gray-700">No saved listings yet.</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Save listings to keep track of items you’re interested in.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {favoriteListings.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/listing/${item.id}`}
+                  className="rounded-2xl border bg-white p-4 shadow-sm hover:shadow-md"
+                >
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="mb-3 h-40 w-full rounded-xl bg-gray-100 object-contain"
+                    />
+                  ) : (
+                    <div className="mb-3 h-40 rounded-xl bg-gray-100" />
+                  )}
+
+                  <p className="text-xs text-gray-500">{item.category || "Other"}</p>
+
+                  <div className="mt-1 flex items-start justify-between gap-3">
+                    <span className="font-semibold">{item.title}</span>
+                    <span className="font-bold">
+                      ${((item.price_cents ?? 0) / 100).toFixed(2)}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="rounded-3xl bg-white p-6 shadow-xl">

@@ -1,268 +1,363 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const REPORT_REASONS = [
-  "Inaccurate listing",
-  "Scam or suspicious",
-  "Prohibited item",
-  "Spam",
-  "Harassment",
+const CATEGORIES = [
+  "Books",
+  "Clothes",
+  "Electronics",
+  "Furniture",
+  "Dorm Essentials",
+  "School Supplies",
+  "Kitchen",
+  "Decor",
+  "Sports & Fitness",
   "Other",
 ];
 
-type ListingImage = {
-  id: string;
-  image_url: string;
-  sort_order: number;
-};
+const CONDITIONS = [
+  "New",
+  "Like New",
+  "Good",
+  "Fair",
+  "Used",
+];
 
-export default function ListingPage({ params }: { params: any }) {
-  const supabase = createClient();
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
 
-  const [item, setItem] = useState<any>(null);
-  const [images, setImages] = useState<ListingImage[]>([]);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
-  const [showReportForm, setShowReportForm] = useState(false);
-  const [reportReason, setReportReason] = useState("");
-  const [reportDetails, setReportDetails] = useState("");
-  const [reportSubmitting, setReportSubmitting] = useState(false);
-  const [reportError, setReportError] = useState("");
-  const [reportSuccess, setReportSuccess] = useState("");
-
-  useEffect(() => {
-    async function load() {
-      const { id } = await params;
-
-      const { data } = await supabase
-        .from("listings")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      setItem(data);
-
-      const { data: imageData } = await supabase
-        .from("listing_images")
-        .select("*")
-        .eq("listing_id", id)
-        .order("sort_order", { ascending: true });
-
-      const finalImages = imageData ?? [];
-      setImages(finalImages);
-      setSelectedImage(finalImages[0]?.image_url ?? data?.image_url ?? null);
-    }
-
-    load();
-  }, [params, supabase]);
-
-  async function handleBuy() {
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      body: JSON.stringify({ listingId: item.id }),
-    });
-
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   }
 
-  async function handleReport(e: React.FormEvent) {
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+export default function ListPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [condition, setCondition] = useState("");
+  const [price, setPrice] = useState("");
+  const [category, setCategory] = useState("");
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const previews = useMemo(() => {
+    return imageFiles.map((file) => URL.createObjectURL(file));
+  }, [imageFiles]);
+
+  const canSubmit =
+    title.trim().length > 0 &&
+    description.trim().length > 0 &&
+    condition.trim().length > 0 &&
+    price.trim().length > 0 &&
+    Number(price) > 0 &&
+    category.trim().length > 0 &&
+    pickupLocation.trim().length > 0 &&
+    phoneNumber.replace(/\D/g, "").length === 10 &&
+    imageFiles.length > 0 &&
+    !submitting;
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setReportError("");
-    setReportSuccess("");
-    setReportSubmitting(true);
+    setErrorMessage("");
+
+    if (!canSubmit) {
+      setErrorMessage(
+        "Fill out every field, including condition, pickup location, phone number, price, and at least one picture."
+      );
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser();
 
-      if (!user) {
-        throw new Error("You must be logged in to report a listing.");
+      if (userError || !user) {
+        setSubmitting(false);
+        setErrorMessage("You need to log in first.");
+        router.push("/login?next=/list");
+        return;
       }
 
-      if (!reportReason) {
-        throw new Error("Select a reason for the report.");
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !profile?.school_id) {
+        throw new Error("Could not find your school profile.");
       }
 
-      const { error } = await supabase.from("listing_reports").insert({
-        listing_id: item.id,
-        reporter_id: user.id,
-        reason: reportReason,
-        details: reportDetails.trim() || null,
-      });
-
-      if (error) {
-        throw new Error(error.message);
+      if (phoneNumber.replace(/\D/g, "").length !== 10) {
+        throw new Error("Enter a valid 10-digit phone number.");
       }
 
-      setReportSuccess("Report submitted. We’ll review it.");
-      setReportReason("");
-      setReportDetails("");
-      setShowReportForm(false);
+      if (imageFiles.length === 0) {
+        throw new Error("Please upload at least one image.");
+      }
+
+      const uploadedUrls: string[] = [];
+
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const fileExt = file.name.split(".").pop() || "jpg";
+        const filePath = `${user.id}/${Date.now()}-${i}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("listings_images")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("listings_images")
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(urlData.publicUrl);
+      }
+
+      const coverImageUrl = uploadedUrls[0];
+
+      const { data: listing, error: insertError } = await supabase
+        .from("listings")
+        .insert({
+          title: title.trim(),
+          description: description.trim(),
+          condition: condition.trim(),
+          category: category.trim(),
+          price_cents: Math.round(Number(price) * 100),
+          image_url: coverImageUrl,
+          seller_id: user.id,
+          school_id: profile.school_id,
+          pickup_location: pickupLocation.trim(),
+          phone_number: phoneNumber.trim(),
+          status: "active",
+        })
+        .select("id")
+        .single();
+
+      if (insertError || !listing) {
+        throw new Error(insertError?.message || "Could not create listing.");
+      }
+
+      const imageRows = uploadedUrls.map((url, index) => ({
+        listing_id: listing.id,
+        image_url: url,
+        sort_order: index,
+      }));
+
+      const { error: imagesInsertError } = await supabase
+        .from("listing_images")
+        .insert(imageRows);
+
+      if (imagesInsertError) {
+        throw new Error(imagesInsertError.message);
+      }
+
+      router.push(`/listing/${listing.id}`);
+      router.refresh();
     } catch (err: any) {
-      setReportError(err.message || "Could not submit report.");
-    } finally {
-      setReportSubmitting(false);
+      setSubmitting(false);
+      setErrorMessage(err.message || "Could not create listing.");
     }
   }
 
-  if (!item) return <p className="p-6">Loading...</p>;
-
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
-      <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-3xl shadow-xl">
-          {selectedImage ? (
-            <img
-              src={selectedImage}
-              className="w-full h-96 object-contain bg-gray-100 rounded-xl"
-              alt={item.title}
-            />
-          ) : (
-            <div className="w-full h-96 rounded-xl bg-gray-100" />
-          )}
+      <div className="mx-auto max-w-4xl space-y-6">
+        <section className="rounded-3xl bg-white p-6 shadow-xl">
+          <h1 className="text-3xl font-bold">Create Listing</h1>
+          <p className="mt-1 text-gray-600">
+            Post your item for students at your school.
+          </p>
+        </section>
 
-          {images.length > 1 && (
-            <div className="mt-4 flex gap-3 overflow-x-auto">
-              {images.map((img) => (
-                <button
-                  key={img.id}
-                  type="button"
-                  onClick={() => setSelectedImage(img.image_url)}
-                  className={`rounded-xl border p-1 ${
-                    selectedImage === img.image_url
-                      ? "border-black"
-                      : "border-gray-200"
-                  }`}
-                >
-                  <img
-                    src={img.image_url}
-                    alt="Listing thumbnail"
-                    className="h-20 w-20 rounded-lg bg-gray-100 object-contain"
-                  />
-                </button>
-              ))}
+        {errorMessage && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <section className="rounded-3xl bg-white p-6 shadow-xl space-y-5">
+            <div>
+              <h2 className="text-xl font-semibold">Item Details</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Add the main info about what you’re selling.
+              </p>
             </div>
-          )}
-        </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-xl flex flex-col justify-between">
-          <div>
-            <p className="text-sm text-gray-500">{item.category || "Other"}</p>
+            <div>
+              <label className="block text-sm font-medium">Title</label>
+              <input
+                type="text"
+                placeholder="Ex: Mini fridge"
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+            </div>
 
-            <h1 className="text-3xl font-bold mt-2">{item.title}</h1>
+            <div>
+              <label className="block text-sm font-medium">Description</label>
+              <textarea
+                placeholder="Describe the item, condition, and anything the buyer should know..."
+                className="mt-1 min-h-[140px] w-full rounded-xl border px-4 py-3"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+              />
+            </div>
 
-            <p className="text-sm text-gray-500 mt-1">
-              Condition: {item.condition || "Not listed"}
-            </p>
+            <div>
+              <label className="block text-sm font-medium">Condition</label>
+              <select
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={condition}
+                onChange={(e) => setCondition(e.target.value)}
+                required
+              >
+                <option value="">Select condition</option>
+                {CONDITIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <p className="text-2xl font-bold mt-3">
-              ${((item.price_cents ?? 0) / 100).toFixed(2)}
-            </p>
+            <div>
+              <label className="block text-sm font-medium">Category</label>
+              <select
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                required
+              >
+                <option value="">Select category</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <p className="mt-4 text-gray-600">
-              {item.description}
-            </p>
+            <div>
+              <label className="block text-sm font-medium">Price ($)</label>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="25.00"
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                required
+              />
+            </div>
 
-            <div className="mt-6">
-              {!showReportForm ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowReportForm(true);
-                    setReportError("");
-                    setReportSuccess("");
-                  }}
-                  className="text-sm underline text-gray-600 hover:text-black"
-                >
-                  Report listing
-                </button>
-              ) : (
-                <form onSubmit={handleReport} className="space-y-3 rounded-2xl border bg-gray-50 p-4">
-                  <div>
-                    <label className="block text-sm font-medium">Reason</label>
-                    <select
-                      value={reportReason}
-                      onChange={(e) => setReportReason(e.target.value)}
-                      className="mt-1 w-full rounded-xl border px-4 py-3"
-                      required
-                    >
-                      <option value="">Select a reason</option>
-                      {REPORT_REASONS.map((reason) => (
-                        <option key={reason} value={reason}>
-                          {reason}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+            <div>
+              <label className="block text-sm font-medium">
+                Pictures <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                onChange={(e) => setImageFiles(Array.from(e.target.files ?? []))}
+                required
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                You can upload multiple pictures. The first one will be the cover image.
+              </p>
+            </div>
 
-                  <div>
-                    <label className="block text-sm font-medium">Details (optional)</label>
-                    <textarea
-                      value={reportDetails}
-                      onChange={(e) => setReportDetails(e.target.value)}
-                      placeholder="Add more detail if needed..."
-                      className="mt-1 min-h-[100px] w-full rounded-xl border px-4 py-3"
+            {previews.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {previews.map((src, index) => (
+                  <div key={index} className="rounded-2xl border bg-gray-50 p-3">
+                    <img
+                      src={src}
+                      alt={`Preview ${index + 1}`}
+                      className="h-40 w-full rounded-xl object-contain"
                     />
+                    {index === 0 && (
+                      <p className="mt-2 text-center text-xs font-medium text-gray-600">
+                        Cover image
+                      </p>
+                    )}
                   </div>
+                ))}
+              </div>
+            )}
+          </section>
 
-                  {reportError && (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                      {reportError}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      disabled={reportSubmitting}
-                      className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                    >
-                      {reportSubmitting ? "Submitting..." : "Submit Report"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowReportForm(false);
-                        setReportError("");
-                      }}
-                      className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-gray-100"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {reportSuccess && (
-                <div className="mt-3 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                  {reportSuccess}
-                </div>
-              )}
+          <section className="rounded-3xl bg-white p-6 shadow-xl space-y-5">
+            <div>
+              <h2 className="text-xl font-semibold">Pickup & Contact</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                This info is only shown to the buyer after the transaction is complete.
+              </p>
             </div>
-          </div>
 
-          <div className="space-y-3 mt-6">
-            <button
-              onClick={handleBuy}
-              className="w-full bg-black text-white py-3 rounded-xl font-medium hover:shadow-lg"
-            >
-              Buy Now
-            </button>
+            <div>
+              <label className="block text-sm font-medium">
+                Pickup location on campus
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Library entrance, Shen lobby, dorm lounge..."
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={pickupLocation}
+                onChange={(e) => setPickupLocation(e.target.value)}
+                required
+              />
+            </div>
 
-            <Link
-              href="/browse"
-              className="block text-center border py-3 rounded-xl hover:shadow"
-            >
-              Back to browse
-            </Link>
-          </div>
-        </div>
+            <div>
+              <label className="block text-sm font-medium">Phone number</label>
+              <input
+                type="tel"
+                placeholder="(555) 555-5555"
+                className="mt-1 w-full rounded-xl border px-4 py-3"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
+                required
+              />
+            </div>
+          </section>
+
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="w-full rounded-xl bg-black py-3 font-medium text-white disabled:opacity-50"
+          >
+            {submitting ? "Posting..." : "Post Listing"}
+          </button>
+        </form>
       </div>
     </main>
   );
