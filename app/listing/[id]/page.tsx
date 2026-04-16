@@ -61,6 +61,9 @@ export default function ListingPage() {
   const [reportError, setReportError] = useState("");
   const [reportSuccess, setReportSuccess] = useState("");
 
+  const [buyLoading, setBuyLoading] = useState(false);
+  const [buyError, setBuyError] = useState("");
+
   useEffect(() => {
     async function load() {
       if (!listingId) return;
@@ -187,15 +190,32 @@ export default function ListingPage() {
   }
 
   async function handleBuy() {
-    if (!item?.id) return;
+    if (!item?.id || buyLoading) return;
 
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      body: JSON.stringify({ listingId: item.id }),
-    });
+    setBuyLoading(true);
+    setBuyError("");
 
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        body: JSON.stringify({ listingId: item.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to start checkout.");
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned.");
+      }
+    } catch (err: any) {
+      setBuyError(err.message || "Something went wrong.");
+      setBuyLoading(false);
+    }
   }
 
   async function handleReport(e: React.FormEvent) {
@@ -462,24 +482,32 @@ export default function ListingPage() {
           </div>
 
           <div className="mt-6 space-y-3">
+            {buyError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {buyError}
+              </div>
+            )}
+
             <button
               onClick={handleBuy}
-              disabled={!canBuy}
+              disabled={!canBuy || buyLoading}
               className={`group relative w-full overflow-hidden rounded-xl py-3 font-medium text-white transition ${
-                canBuy
+                canBuy && !buyLoading
                   ? "bg-black hover:shadow-lg"
                   : "cursor-not-allowed bg-gray-400"
               }`}
             >
               <span className="relative z-10">
-                {isOwnListing
+                {buyLoading
+                  ? "Processing..."
+                  : isOwnListing
                   ? "Your Listing"
                   : isSold
                   ? "Already Swept Up"
                   : "Sweep It Up"}
               </span>
 
-              {canBuy && (
+              {canBuy && !buyLoading && (
                 <>
                   <img
                     src="/broom.png"
