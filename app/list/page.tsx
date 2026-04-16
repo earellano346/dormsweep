@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -17,13 +17,7 @@ const CATEGORIES = [
   "Other",
 ];
 
-const CONDITIONS = [
-  "New",
-  "Like New",
-  "Good",
-  "Fair",
-  "Used",
-];
+const CONDITIONS = ["New", "Like New", "Good", "Fair", "Used"];
 
 function formatPhone(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 10);
@@ -51,9 +45,58 @@ export default function ListPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  const [loadingStripeStatus, setLoadingStripeStatus] = useState(true);
+  const [stripeConnected, setStripeConnected] = useState(false);
+
   const previews = useMemo(() => {
     return imageFiles.map((file) => URL.createObjectURL(file));
   }, [imageFiles]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadStripeStatus() {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          if (!mounted) return;
+          setStripeConnected(false);
+          setLoadingStripeStatus(false);
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("stripe_account_id")
+          .eq("id", user.id)
+          .single();
+
+        if (!mounted) return;
+
+        if (profileError) {
+          setStripeConnected(false);
+        } else {
+          setStripeConnected(Boolean(profile?.stripe_account_id));
+        }
+
+        setLoadingStripeStatus(false);
+      } catch {
+        if (!mounted) return;
+        setStripeConnected(false);
+        setLoadingStripeStatus(false);
+      }
+    }
+
+    loadStripeStatus();
+
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
 
   const canSubmit =
     title.trim().length > 0 &&
@@ -65,13 +108,37 @@ export default function ListPage() {
     pickupLocation.trim().length > 0 &&
     phoneNumber.replace(/\D/g, "").length === 10 &&
     imageFiles.length > 0 &&
+    stripeConnected &&
+    !loadingStripeStatus &&
     !submitting;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMessage("");
 
-    if (!canSubmit) {
+    if (loadingStripeStatus) {
+      setErrorMessage("Checking your Stripe account status. Try again in a second.");
+      return;
+    }
+
+    if (!stripeConnected) {
+      setErrorMessage(
+        "You must connect your Stripe account before creating a listing."
+      );
+      return;
+    }
+
+    if (
+      !title.trim() ||
+      !description.trim() ||
+      !condition.trim() ||
+      !price.trim() ||
+      Number(price) <= 0 ||
+      !category.trim() ||
+      !pickupLocation.trim() ||
+      phoneNumber.replace(/\D/g, "").length !== 10 ||
+      imageFiles.length === 0
+    ) {
       setErrorMessage(
         "Fill out every field, including condition, pickup location, phone number, price, and at least one picture."
       );
@@ -95,12 +162,18 @@ export default function ListPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("school_id")
+        .select("school_id, stripe_account_id")
         .eq("id", user.id)
         .single();
 
       if (profileError || !profile?.school_id) {
         throw new Error("Could not find your school profile.");
+      }
+
+      if (!profile.stripe_account_id) {
+        throw new Error(
+          "You must connect your Stripe account before creating a listing."
+        );
       }
 
       if (phoneNumber.replace(/\D/g, "").length !== 10) {
@@ -291,7 +364,8 @@ export default function ListPage() {
                 required
               />
               <p className="mt-2 text-xs text-gray-500">
-                You can upload multiple pictures. The first one will be the cover image.
+                You can upload multiple pictures. The first one will be the cover
+                image.
               </p>
             </div>
 
@@ -319,7 +393,8 @@ export default function ListPage() {
             <div>
               <h2 className="text-xl font-semibold">Pickup & Contact</h2>
               <p className="mt-1 text-sm text-gray-500">
-                This info is only shown to the buyer after the transaction is complete.
+                This info is only shown to the buyer after the transaction is
+                complete.
               </p>
             </div>
 
@@ -350,12 +425,61 @@ export default function ListPage() {
             </div>
           </section>
 
+          <section className="rounded-3xl bg-white p-6 shadow-xl space-y-5">
+            <div>
+              <h2 className="text-xl font-semibold">Stripe Account</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                You must connect Stripe before creating a listing so DormSweep can
+                send your payout when an item sells.
+              </p>
+            </div>
+
+            {loadingStripeStatus ? (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm text-gray-600">
+                  Checking your Stripe account status...
+                </p>
+              </div>
+            ) : stripeConnected ? (
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-800">
+                  Stripe account linked
+                </p>
+                <p className="mt-1 text-sm text-green-700">
+                  You’re ready to create listings and receive payouts when items
+                  sell.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-medium text-amber-900">
+                  Stripe account not linked
+                </p>
+                <p className="mt-1 text-sm text-amber-800">
+                  You must connect your Stripe account before creating a listing.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => router.push("/profile")}
+                  className="mt-4 rounded-xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+                >
+                  Connect Stripe
+                </button>
+              </div>
+            )}
+          </section>
+
           <button
             type="submit"
             disabled={!canSubmit}
-            className="w-full rounded-xl bg-black py-3 font-medium text-white disabled:opacity-50"
+            className="w-full rounded-xl bg-black py-3 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Posting..." : "Post Listing"}
+            {submitting
+              ? "Posting..."
+              : !loadingStripeStatus && !stripeConnected
+              ? "Connect Stripe to Post Listing"
+              : "Post Listing"}
           </button>
         </form>
       </div>
