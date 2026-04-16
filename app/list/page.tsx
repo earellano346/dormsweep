@@ -19,6 +19,86 @@ const CATEGORIES = [
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Used"];
 
+const PRICE_GUIDANCE: Record<
+  string,
+  {
+    min: number;
+    max: number;
+    examples: string;
+    tip: string;
+  }
+> = {
+  Books: {
+    min: 8,
+    max: 45,
+    examples: "Textbooks, novels, class books",
+    tip: "Most student books move faster when priced clearly below buying new.",
+  },
+  Clothes: {
+    min: 5,
+    max: 35,
+    examples: "Hoodies, jackets, jeans, shoes",
+    tip: "Affordable everyday pieces usually perform better than trying to price near retail.",
+  },
+  Electronics: {
+    min: 20,
+    max: 180,
+    examples: "Headphones, speakers, calculators, small tech",
+    tip: "Electronics can go higher if they’re newer, but students still expect a strong discount.",
+  },
+  Furniture: {
+    min: 20,
+    max: 140,
+    examples: "Chairs, shelves, small desks, storage",
+    tip: "Furniture sells best when it feels cheaper than hauling something home or buying new.",
+  },
+  "Dorm Essentials": {
+    min: 8,
+    max: 60,
+    examples: "Bedding, lamps, organizers, fans",
+    tip: "These are usually impulse buys, so fair pricing matters a lot.",
+  },
+  "School Supplies": {
+    min: 3,
+    max: 25,
+    examples: "Binders, notebooks, calculators, supplies",
+    tip: "This category should usually stay inexpensive and easy to justify.",
+  },
+  Kitchen: {
+    min: 8,
+    max: 70,
+    examples: "Microwaves, mini appliances, cookware",
+    tip: "Kitchen items can sell fast when they clearly beat store prices.",
+  },
+  Decor: {
+    min: 5,
+    max: 40,
+    examples: "Rugs, posters, lights, room decor",
+    tip: "Decor tends to move best when it feels fun and cheap, not premium.",
+  },
+  "Sports & Fitness": {
+    min: 10,
+    max: 90,
+    examples: "Balls, weights, bands, workout gear",
+    tip: "This category has range, but fair used pricing helps a lot.",
+  },
+  Other: {
+    min: 5,
+    max: 50,
+    examples: "General campus-use items",
+    tip: "Try pricing this based on what a student would realistically want to pay today.",
+  },
+};
+
+const CONDITION_ADVICE: Record<string, string> = {
+  New: "New items can sit near the top of the range if they’re genuinely unused.",
+  "Like New":
+    "Like New items usually do well a little below the top of the range.",
+  Good: "Good condition items usually fit comfortably in the middle of the range.",
+  Fair: "Fair condition items usually need a lower price to move quickly.",
+  Used: "Used items usually sell best when priced clearly below newer alternatives.",
+};
+
 function formatPhone(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 10);
 
@@ -28,6 +108,10 @@ function formatPhone(value: string) {
   }
 
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function formatDollars(amount: number) {
+  return `$${amount.toFixed(2)}`;
 }
 
 export default function ListPage() {
@@ -51,6 +135,60 @@ export default function ListPage() {
   const previews = useMemo(() => {
     return imageFiles.map((file) => URL.createObjectURL(file));
   }, [imageFiles]);
+
+  const numericPrice = Number(price);
+  const selectedGuidance = category ? PRICE_GUIDANCE[category] : null;
+
+  const pricingFeedback = useMemo(() => {
+    if (!selectedGuidance || !price.trim() || Number.isNaN(numericPrice) || numericPrice <= 0) {
+      return null;
+    }
+
+    const { min, max } = selectedGuidance;
+
+    if (numericPrice > max * 1.4) {
+      return {
+        tone: "high" as const,
+        title: "This price looks much higher than expected",
+        message:
+          "Students may skip this listing if it feels too close to retail or much higher than similar campus deals.",
+      };
+    }
+
+    if (numericPrice > max) {
+      return {
+        tone: "medium" as const,
+        title: "This price is above the usual range",
+        message:
+          "You can still post it, but pricing closer to the suggested range may help it sell faster.",
+      };
+    }
+
+    if (numericPrice < min * 0.75) {
+      return {
+        tone: "value" as const,
+        title: "This looks like a strong value price",
+        message:
+          "Listings priced this well can get attention quickly, especially for everyday dorm items.",
+      };
+    }
+
+    if (numericPrice < min) {
+      return {
+        tone: "good" as const,
+        title: "This price is below the usual range",
+        message:
+          "That can help your item stand out if you want a faster sale.",
+      };
+    }
+
+    return {
+      tone: "good" as const,
+      title: "This price fits the recommended range",
+      message:
+        "That should feel reasonable to students if the condition and photos match the listing.",
+    };
+  }, [selectedGuidance, price, numericPrice]);
 
   useEffect(() => {
     let mounted = true;
@@ -318,6 +456,11 @@ export default function ListPage() {
                   </option>
                 ))}
               </select>
+              {condition && (
+                <p className="mt-2 text-xs text-gray-500">
+                  {CONDITION_ADVICE[condition]}
+                </p>
+              )}
             </div>
 
             <div>
@@ -337,6 +480,25 @@ export default function ListPage() {
               </select>
             </div>
 
+            {selectedGuidance && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-medium text-blue-900">
+                  Suggested price range for {category}
+                </p>
+                <p className="mt-1 text-sm text-blue-800">
+                  {formatDollars(selectedGuidance.min)} to{" "}
+                  {formatDollars(selectedGuidance.max)}
+                </p>
+                <p className="mt-2 text-sm text-blue-800">
+                  <span className="font-medium">Common items:</span>{" "}
+                  {selectedGuidance.examples}
+                </p>
+                <p className="mt-2 text-sm text-blue-800">
+                  {selectedGuidance.tip}
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium">Price ($)</label>
               <input
@@ -350,6 +512,47 @@ export default function ListPage() {
                 required
               />
             </div>
+
+            {pricingFeedback && (
+              <div
+                className={`rounded-2xl p-4 ${
+                  pricingFeedback.tone === "high"
+                    ? "border border-red-200 bg-red-50"
+                    : pricingFeedback.tone === "medium"
+                    ? "border border-amber-200 bg-amber-50"
+                    : pricingFeedback.tone === "value"
+                    ? "border border-green-200 bg-green-50"
+                    : "border border-emerald-200 bg-emerald-50"
+                }`}
+              >
+                <p
+                  className={`text-sm font-medium ${
+                    pricingFeedback.tone === "high"
+                      ? "text-red-800"
+                      : pricingFeedback.tone === "medium"
+                      ? "text-amber-900"
+                      : pricingFeedback.tone === "value"
+                      ? "text-green-800"
+                      : "text-emerald-800"
+                  }`}
+                >
+                  {pricingFeedback.title}
+                </p>
+                <p
+                  className={`mt-1 text-sm ${
+                    pricingFeedback.tone === "high"
+                      ? "text-red-700"
+                      : pricingFeedback.tone === "medium"
+                      ? "text-amber-800"
+                      : pricingFeedback.tone === "value"
+                      ? "text-green-700"
+                      : "text-emerald-700"
+                  }`}
+                >
+                  {pricingFeedback.message}
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium">
