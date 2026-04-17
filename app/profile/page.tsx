@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import DeleteListingButton from "../components/DeleteListingButton";
 import ConnectStripeButton from "../components/ConnectStripeButton";
+import RemoveSavedButton from "../components/RemoveSavedButton";
 
 function timeAgo(dateString?: string) {
   if (!dateString) return "";
@@ -80,8 +81,6 @@ export default async function ProfilePage() {
   return (
     <main className="min-h-screen -mx-6 -my-6 p-6">
       <div className="mx-auto max-w-6xl space-y-8">
-
-        {/* HEADER */}
         <section className="rounded-3xl bg-white p-6 shadow-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -107,46 +106,52 @@ export default async function ProfilePage() {
           </div>
         </section>
 
-        {/* SAVED LISTINGS */}
         <section className="rounded-3xl bg-white p-6 shadow-xl">
-          <h2 className="text-xl font-semibold mb-4">Saved Listings</h2>
+          <h2 className="mb-4 text-xl font-semibold">Saved Listings</h2>
 
           {favoriteListings.length === 0 ? (
             <p>No saved listings yet.</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {favoriteListings.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/listing/${item.id}`}
-                  className="rounded-2xl border p-4"
-                >
-                  <img
-                    src={item.image_url}
-                    className="mb-3 h-40 w-full object-contain"
-                  />
+                <div key={item.id} className="rounded-2xl border p-4">
+                  <Link href={`/listing/${item.id}`} className="block">
+                    <img
+                      src={item.image_url}
+                      className="mb-3 h-40 w-full object-contain"
+                      alt={item.title}
+                    />
 
-                  <p className="text-xs text-gray-500">{item.category}</p>
+                    <p className="text-xs text-gray-500">{item.category}</p>
 
-                  <p className="text-xs text-gray-400">
-                    {timeAgo(item.created_at)}
-                  </p>
+                    <p className="text-xs text-gray-400">
+                      {timeAgo(item.created_at)}
+                    </p>
 
-                  <div className="flex justify-between mt-1">
-                    <span>{item.title}</span>
-                    <span>
-                      ${(item.price_cents / 100).toFixed(2)}
-                    </span>
+                    <div className="mt-1 flex justify-between">
+                      <span>{item.title}</span>
+                      <span>${(item.price_cents / 100).toFixed(2)}</span>
+                    </div>
+                  </Link>
+
+                  <div className="mt-3 flex gap-2">
+                    <Link
+                      href={`/listing/${item.id}`}
+                      className="flex-1 rounded-xl border px-3 py-2 text-center font-medium transition hover:bg-gray-100"
+                    >
+                      View
+                    </Link>
+
+                    <RemoveSavedButton listingId={item.id} />
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}
         </section>
 
-        {/* ACTIVE LISTINGS */}
         <section className="rounded-3xl bg-white p-6 shadow-xl">
-          <h2 className="text-xl font-semibold mb-4">Active Listings</h2>
+          <h2 className="mb-4 text-xl font-semibold">Active Listings</h2>
 
           {activeListings?.length === 0 ? (
             <p>No active listings.</p>
@@ -157,6 +162,7 @@ export default async function ProfilePage() {
                   <img
                     src={item.image_url}
                     className="mb-3 h-40 w-full object-contain"
+                    alt={item.title}
                   />
 
                   <p className="text-xs text-gray-500">{item.category}</p>
@@ -165,18 +171,15 @@ export default async function ProfilePage() {
                     {timeAgo(item.created_at)}
                   </p>
 
-                  <div className="flex justify-between mt-1">
+                  <div className="mt-1 flex justify-between">
                     <span>{item.title}</span>
-                    <span>
-                      ${(item.price_cents / 100).toFixed(2)}
-                    </span>
+                    <span>${(item.price_cents / 100).toFixed(2)}</span>
                   </div>
 
-                  {/* 🔥 FIXED BUTTONS */}
                   <div className="mt-3 flex gap-2">
                     <Link
                       href={`/listing/${item.id}`}
-                      className="flex-1 rounded-xl border px-3 py-2 text-center font-medium hover:bg-gray-100 transition"
+                      className="flex-1 rounded-xl border px-3 py-2 text-center font-medium transition hover:bg-gray-100"
                     >
                       View
                     </Link>
@@ -189,9 +192,8 @@ export default async function ProfilePage() {
           )}
         </section>
 
-        {/* SOLD LISTINGS */}
         <section className="rounded-3xl bg-white p-6 shadow-xl">
-          <h2 className="text-xl font-semibold mb-4">Sold Listings</h2>
+          <h2 className="mb-4 text-xl font-semibold">Sold Listings</h2>
 
           {soldListings?.length === 0 ? (
             <p>No sold items yet.</p>
@@ -202,6 +204,7 @@ export default async function ProfilePage() {
                   <img
                     src={item.image_url}
                     className="mb-3 h-40 w-full object-contain"
+                    alt={item.title}
                   />
 
                   <p className="text-xs text-gray-500">{item.category}</p>
@@ -210,14 +213,12 @@ export default async function ProfilePage() {
                     Sold {timeAgo(item.sold_at)}
                   </p>
 
-                  <div className="flex justify-between mt-1">
+                  <div className="mt-1 flex justify-between">
                     <span>{item.title}</span>
-                    <span>
-                      ${(item.price_cents / 100).toFixed(2)}
-                    </span>
+                    <span>${(item.price_cents / 100).toFixed(2)}</span>
                   </div>
 
-                  <p className="text-green-600 mt-2">Sold</p>
+                  <p className="mt-2 text-green-600">Sold</p>
                 </div>
               ))}
             </div>
